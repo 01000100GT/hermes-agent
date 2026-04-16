@@ -57,3 +57,11 @@ class MockMctsEngine(IMctsEngine):
         self._has_human_hint = True
         node.history.append({"role": "user", "content": f"Hint: {feedback}"})
         node.status = NodeStatus.PRUNED
+
+    def apply_override(self, node: MctsNode, feedback: str) -> None:
+        self._has_human_hint = True
+        node.history.append({"role": "user", "content": f"Exact Answer: {feedback}"})
+        node.status = NodeStatus.PENDING
+
+    def diagnose_trajectory(self, node: MctsNode) -> str:
+        return "Mock Engine: 达到了最大步数限制，建议人类提供进一步的指示。"

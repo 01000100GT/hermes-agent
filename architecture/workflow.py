@@ -101,15 +101,52 @@ class HermesMctsWorkflow:
             status=NodeStatus.PENDING,
         )
 
-        max_iterations = 10
+        max_iterations = 1
         iteration = 0
 
         while current_node.status not in (NodeStatus.COMPLETED, NodeStatus.PRUNED):
             if iteration >= max_iterations:
-                logger.error(
-                    "Max iterations reached. Aborting task to prevent infinite loop."
-                )
-                break
+                logger.warning("Max iterations reached. Triggering diagnostic...")
+                reason = self._engine.diagnose_trajectory(current_node)
+                
+                # 当达到最大次数时，通过 HITL (Human-In-The-Loop) 询问人下一步的工作
+                decision = self._hitl.request_decision(current_node, reason)
+
+                if decision == HumanDecision.ABORT:
+                    logger.error("Task aborted by human due to max iterations.")
+                    return None
+                elif decision == HumanDecision.PRUNE:
+                    feedback = self._hitl.get_human_feedback() or ""
+                    self._engine.prune_and_redirect(current_node, feedback)
+                    logger.info("Human provided steering feedback at max iterations. Resetting counter.")
+                    # 关键修改：Prune 会将节点状态改为 PRUNED。
+                    # 为了让 while 循环继续（因为我们要给 AI 新的机会），我们需要把状态改回 PENDING
+                    current_node.status = NodeStatus.PENDING
+                    # 关键修复：重置分数为 1.0，防止再次被低分护栏拦截！
+                    current_node.score = 1.0
+                    # 重置迭代计数器
+                    iteration = 0 
+                    continue
+                elif decision == HumanDecision.OVERRIDE:
+                    feedback = self._hitl.get_human_feedback() or ""
+                    self._engine.apply_override(current_node, feedback)
+                    logger.info("Human provided override result at max iterations. Resetting counter.")
+                    # apply_override 本身已经把状态设为了 PENDING
+                    # 关键修复：重置分数为 1.0
+                    current_node.score = 1.0
+                    iteration = 0
+                    continue
+                elif decision == HumanDecision.APPROVE:
+                    logger.info("Human approved execution to continue. Extending max_iterations.")
+                    # 如果人类觉得没问题，再给 20 次机会
+                    # max_iterations += 20
+                    max_iterations += 1  # 测试期先多给1次机会 sss
+                    # 关键修复：既然人类批准了“超出步数限制”的继续，也意味着认可当前节点，重置分数防二次拦截
+                    current_node.score = 1.0
+                    continue
+                else:
+                    break
+
             iteration += 1
             # 1. Guardrail Check (Harness Monitor)
             if self._harness.check_thresholds(current_node):
@@ -123,15 +160,31 @@ class HermesMctsWorkflow:
                     logger.error("Task aborted by human.")
                     return None
 
-                elif decision in (HumanDecision.PRUNE, HumanDecision.OVERRIDE):
+                elif decision == HumanDecision.PRUNE:
                     feedback = self._hitl.get_human_feedback() or ""
                     self._engine.prune_and_redirect(current_node, feedback)
                     logger.info("Human provided steering feedback. Re-evaluating...")
+                    # 关键修改：重置节点状态为 PENDING，防止外层 while 循环直接退出
+                    current_node.status = NodeStatus.PENDING
+                    # 关键修复：重置分数为 1.0，防止再次被低分护栏拦截！
+                    current_node.score = 1.0
                     # In MCTS, after pruning/steering, we let the engine select the next best node
+                    continue
+
+                elif decision == HumanDecision.OVERRIDE:
+                    feedback = self._hitl.get_human_feedback() or ""
+                    self._engine.apply_override(current_node, feedback)
+                    logger.info("Human provided override result. Proceeding...")
+                    # In MCTS, after overriding, the node state is kept PENDING internally by apply_override
+                    current_node.status = NodeStatus.PENDING
+                    # 关键修复：重置分数为 1.0
+                    current_node.score = 1.0
                     continue
 
                 elif decision == HumanDecision.APPROVE:
                     logger.info("Human approved execution. Proceeding.")
+                    # 关键修复：人类批准后，必须重置分数，否则下一次循环可能依然被分数拦截
+                    current_node.score = 1.0
 
             # 3. AI Execution (MCTS Step)
             # The engine expands the current node by proposing/executing the next actions.

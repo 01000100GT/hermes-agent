@@ -114,3 +114,11 @@ class IMctsEngine(Protocol):
     def prune_and_redirect(self, node: MctsNode, feedback: str) -> None:
         """Handle human intervention to prune a branch and steer the search."""
         ...
+
+    def apply_override(self, node: MctsNode, feedback: str) -> None:
+        """Handle human intervention to provide the exact answer/result."""
+        ...
+
+    def diagnose_trajectory(self, node: MctsNode) -> str:
+        """Diagnose why the agent is stuck and provide a human-readable summary and advice."""
+        ...

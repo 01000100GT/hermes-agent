@@ -1,0 +1,821 @@
+(venv) sss@sssdeMacBook-Pro hermes-agent % python architecture/test_run.py
+
+Loaded Environment (.env)
+
+  Path: /Users/sss/.hermes/.env
+
+Loaded Config (config.yaml)
+
+  Main Model: {
+  "default": "Qwen3.5-27B.Q4_K_M.gguf",
+  "providers": {
+    "customllamacpp": {
+      "api": "http://103.81.48.25:12280/v1",
+      "key_env": "MY_CUSTOM_API_KEY",
+      "default_model": "Qwen3.5-27B.Q4_K_M.gguf"
+    }
+  },
+  "provider": "customllamacpp",
+  "context_length": 131072
+}
+  Custom Providers: [
+  {
+    "name": "customllamacpp",
+    "base_url": "http://103.81.48.25:12280/v1",
+    "key_env": "MY_CUSTOM_API_KEY",
+    "model": "Qwen3.5-27B.Q4_K_M.gguf"
+  }
+]
+
+Starting MCTS + HITL Simulation
+
+
+🎯  Requirement Elicitation Phase
+Original Request: 写一篇500字的Harness Engineering的介绍, 要求先进行网络搜索,在写文档, 
+并要求写入/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/tmp/harness_engineering.md.
+
+Analyzing request to generate clarification questions...
+Q1: 您希望文章使用什么语言撰写？虽然'写一篇'暗示中文，但Harness Engineering作为专业术语是否需要英文或中英混合表达？: 中英文混合表达,主要文字为中文.
+Q2: 关于Harness Engineering的内容范围：是指自动化测试平台（如OpenText的HPE ALM/Quality 
+Center中的Harness模块），还是指软件工程中的集成测试工程方法论？这将决定文章的技术深度和侧重点。: Harness Engineering 到底是什么? 通俗来说，Harness Engineering 就是围绕 AI Agent 搭建一整套 “可执行、可验证、可约束、可迭代” 的外层运行系统。  这里的 “Harness” 可以理解为驾驭/缰绳，它不是一段 Prompt，也不是单个工作流，而是给 Agent 量身定制的 “工作轨道”： • 模型负责思考和决策；• Harness 负责把思考变成稳定执行，它决定 Agent 能访问什么、能调用什么、能走到哪一步、什么时候停下、出了错怎么回退、结果如何校验。一句话总结：Prompt 解决 说什么，Context 解决看什么，Harness 解决怎么干。它把模型偶尔爆发的能力，变成可以 持续复用、规模化交付 的生产力。
+
+📝  Draft Goal Contract
+Boundaries:
+  - 必须执行网络搜索获取最新信息，并将约500字的文章内容写入指定路径 
+/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/tmp/harness_engineering.md
+  - User clarification: 中英文混合表,主要文字为中文.
+Acceptance Criteria:
+  - 文件成功创建在指定路径，文件大小大于3KB（确保包含约500中文字符），且内容包含Harness 
+Engineering的核心定义、主要功能和应用场景三个部分
+  - User clarification: Harness Engineering 到底是什么? 通俗来说，Harness Engineering 就是围绕 AI Agent 搭建一整套 
+“可执行、可验证、可约束、可迭代” 的外层运行系统。  这里的 “Harness” 可以理解为驾驭/缰绳，它不是一段 
+Prompt，也不是单个工作流，而是给 Agent 量身定制的 “工作轨道”： • 模型负责思考和决策；• Harness 负责把思考变成稳定执行，它决定 
+Agent 能访问什么、能调用什么、能走到哪一步、什么时候停下、出了错怎么回退、结果如何校验。一句话总结：Prompt 解决 说什么，Context
+解决看什么，Harness 解决怎么干。它把模型偶尔爆发的能力，变成可以 持续复用、规模化交付 的生产力。
+
+Do you approve this Goal Contract? (y/n/edit) [y/n/edit] (y): edit
+Edit default boundary (必须执行网络搜索获取最新信息，并将约500字的文章内容写入指定路径 
+/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/tmp/harness_engineering.md): 必须执行网络搜索获取最新信息，并将约500字的文章内容写入指定路径 
+/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/tmp/harness_engineering.mdEdit default criteria (文件成功创建在指定路径，文件大小大于3KB（确保包含约500中文字符），且内容包含Harness 
+Engineering的核心定义、主要功能和应用场景三个部分): 
+
+📝  Draft Goal Contract
+Boundaries:
+  - 必须执行网络搜索获取最新信息，并将约500字的文章内容写入指定路径
+  - User clarification: 中英文混合表,主要文字为中文.
+Acceptance Criteria:
+  - /Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/tmp/harness_engineering.md
+  - User clarification: Harness Engineering 到底是什么? 通俗来说，Harness Engineering 就是围绕 AI Agent 搭建一整套 
+“可执行、可验证、可约束、可迭代” 的外层运行系统。  这里的 “Harness” 可以理解为驾驭/缰绳，它不是一段 
+Prompt，也不是单个工作流，而是给 Agent 量身定制的 “工作轨道”： • 模型负责思考和决策；• Harness 负责把思考变成稳定执行，它决定 
+Agent 能访问什么、能调用什么、能走到哪一步、什么时候停下、出了错怎么回退、结果如何校验。一句话总结：Prompt 解决 说什么，Context
+解决看什么，Harness 解决怎么干。它把模型偶尔爆发的能力，变成可以 持续复用、规模化交付 的生产力。
+
+Do you approve this Goal Contract? (y/n/edit) [y/n/edit] (y): y
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 1/2)...
+
+[AI 回复] 分支 1 返回结果:
+  - 文本内容: I'll help you create an introduction article about Harness Engineering. Let me first conduct web research to gather relevant information, then compose and write the document.
+
+## Step 1: Web Research on Harness Engineering Concepts
+
+
+  - 工具调用: ['browser_navigate']
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 2/2)...
+
+[AI 回复] 分支 2 返回结果:
+  - 文本内容: 我将首先进行网络搜索以获取最新的 Harness Engineering 相关信息，然后撰写文章。让我开始搜索：
+
+
+  - 工具调用: ['execute_code']
+[分支 1 执行工具] browser_navigate({"url": "https://medium.com/search/harness%20engineering"})
+[分支 2 执行工具] execute_code({"code": "from hermes_tools import terminal\nimport json\n\n# Search for latest information about Harness Engineering and AI Agent frameworks\nsearch_commands = [\n    'curl -s \"https://www.google.com/search?q=harness+engineering+AI+agent\" | grep -i \"harness\\|AI agent\\|framework\" | head -20',\n    'curl -s \"https://www.google.com/search?q=LangChain+AutoGen+CrewAI+comparison+2024\" 2>/dev/null | head -5'\n]\n\nresults = []\nfor cmd in search_commands:\n    try:\n        result = terminal(cmd, timeout=30)\n        results.append(result)\n    except Exception as e:\n        results.append(str(e))\n\nprint(json.dumps(results[:1], indent=2)[:500])"})
+
+[验证器] 正在对 2 个探索分支进行过程打分...
+  └─ 分支 root_0_child_1 得分: 0.65     
+  └─ 分支 root_0_child_2 得分: 0.2      
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 1/2)...
+
+[AI 回复] 分支 1 返回结果:
+  - 文本内容: Let me try alternative sources for research:
+
+
+  - 工具调用: ['browser_navigate']
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 2/2)...
+
+[AI 回复] 分支 2 返回结果:
+  - 文本内容: Let me try Google Search for more comprehensive results:
+
+
+  - 工具调用: ['browser_navigate']
+[分支 1 执行工具] browser_navigate({"url": "https://www.google.com/search?q=harness+engineering+AI+agent+framework"})
+[分支 2 执行工具] browser_navigate({"url": "https://www.google.com/search?q=harness+engineering+AI+agent+infrastructure"})
+
+[验证器] 正在对 2 个探索分支进行过程打分...
+  └─ 分支 root_0_child_1_child_1 得分: 0.7
+  └─ 分支 root_0_child_1_child_2 得分: 0.35
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 1/2)...
+
+[AI 回复] 分支 1 返回结果:
+  - 文本内容: 
+  - 工具调用: ['browser_navigate']
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 2/2)...
+
+[AI 回复] 分支 2 返回结果:
+  - 文本内容: 
+  - 工具调用: ['browser_navigate']
+[分支 1 执行工具] browser_navigate({"url": "https://www.bing.com/search?q=harness+engineering+AI+agent+framework"})
+[分支 2 执行工具] browser_navigate({"url": "https://www.bing.com/search?q=harness+engineering+AI+agent+framework"})
+
+[验证器] 正在对 2 个探索分支进行过程打分...
+  └─ 分支 root_0_child_1_child_1_child_1 得分: 0.75
+  └─ 分支 root_0_child_1_child_1_child_2 得分: 0.75
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 1/2)...
+
+[AI 回复] 分支 1 返回结果:
+  - 文本内容: 
+  - 工具调用: ['browser_navigate']
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 2/2)...
+
+[AI 回复] 分支 2 返回结果:
+  - 文本内容: 
+  - 工具调用: ['browser_navigate']
+[分支 1 执行工具] browser_navigate({"url": "https://en.wikipedia.org/wiki/Software_harness"})
+[分支 2 执行工具] browser_navigate({"url": "https://dev.to/search/harness%20engineering"})
+
+[验证器] 正在对 2 个探索分支进行过程打分...
+  └─ 分支 root_0_child_1_child_1_child_1_child_1 得分: 0.75
+  └─ 分支 root_0_child_1_child_1_child_1_child_2 得分: 0.4
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 1/2)...
+
+[AI 回复] 分支 1 返回结果:
+  - 文本内容: Let me search for information about AI agent orchestration and framework design:
+
+
+
+  - 工具调用: ['browser_navigate']
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 2/2)...
+
+[AI 回复] 分支 2 返回结果:
+  - 文本内容: 
+  - 工具调用: ['browser_navigate']
+[分支 1 执行工具] browser_navigate({"url": "https://www.reddit.com/r/ArtificialIntelligence/comments/search/?q=harness+engineering"})
+[分支 2 执行工具] browser_navigate({"url": "https://github.com/topics/ai-agent-harness"})
+
+[验证器] 正在对 2 个探索分支进行过程打分...
+  └─ 分支 root_0_child_1_child_1_child_1_child_1_child_1 得分: 0.3
+  └─ 分支 root_0_child_1_child_1_child_1_child_1_child_2 得分: 0.75
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 1/2)...
+
+[AI 回复] 分支 1 返回结果:
+  - 文本内容: 
+  - 工具调用: ['browser_navigate']
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 2/2)...
+
+[AI 回复] 分支 2 返回结果:
+  - 文本内容: 
+  - 工具调用: ['browser_navigate']
+[分支 1 执行工具] browser_navigate({"url": "https://www.reddit.com/r/MachineLearning/search?q=harness+engineering"})
+[分支 2 执行工具] browser_navigate({"url": "https://arxiv.org/search/cs?query=agent+harness+framework&searchtype=all"})
+
+[验证器] 正在对 2 个探索分支进行过程打分...
+  └─ 分支 root_0_child_1_child_1_child_1_child_1_child_2_child_1 得分: 0.3
+  └─ 分支 root_0_child_1_child_1_child_1_child_1_child_2_child_2 得分: 0.5
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 1/2)...
+
+[AI 回复] 分支 1 返回结果:
+  - 文本内容: 
+  - 工具调用: ['browser_scroll']
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 2/2)...
+
+[AI 回复] 分支 2 返回结果:
+  - 文本内容: 
+  - 工具调用: ['browser_navigate']
+[分支 1 执行工具] browser_scroll({"direction": "down"})
+[分支 2 执行工具] browser_navigate({"url": "https://arxiv.org/abs/2604.13346"})
+
+[验证器] 正在对 2 个探索分支进行过程打分...
+  └─ 分支 root_0_child_1_child_1_child_1_child_1_child_2_child_2_child_1 得分: 0.7
+  └─ 分支 root_0_child_1_child_1_child_1_child_1_child_2_child_2_child_2 得分: 0.85
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 1/2)...
+
+[AI 回复] 分支 1 返回结果:
+  - 文本内容: 
+  - 工具调用: ['browser_navigate']
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 2/2)...
+
+[AI 回复] 分支 2 返回结果:
+  - 文本内容: 
+  - 工具调用: ['browser_navigate']
+[分支 1 执行工具] browser_navigate({"url": "https://langchain-ai.github.io/langgraph/"})
+[分支 2 执行工具] browser_navigate({"url": "https://langchain-ai.github.io/langgraph/"})
+
+[验证器] 正在对 2 个探索分支进行过程打分...
+  └─ 分支 root_0_child_1_child_1_child_1_child_1_child_2_child_2_child_2_child_1 得分: 0.85
+  └─ 分支 root_0_child_1_child_1_child_1_child_1_child_2_child_2_child_2_child_2 得分: 0.75
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 1/2)...
+
+[AI 回复] 分支 1 返回结果:
+  - 文本内容: 
+  - 工具调用: ['browser_navigate']
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 2/2)...
+
+[错误] 分支 2 生成失败: Request timed out.
+Traceback (most recent call last):
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpx/_transports/default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpcore/_sync/connection.py", line 103, in handle_request
+    return self._connection.handle_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpcore/_sync/http11.py", line 136, in handle_request
+    raise exc
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpcore/_sync/http11.py", line 106, in handle_request
+    ) = self._receive_response_headers(**kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpcore/_sync/http11.py", line 177, in _receive_response_headers
+    event = self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpcore/_sync/http11.py", line 217, in _receive_event
+    data = self._network_stream.read(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpcore/_backends/sync.py", line 126, in read
+    with map_exceptions(exc_map):
+  File "/Users/sss/.local/share/uv/python/cpython-3.11.11-macos-x86_64-none/lib/python3.11/contextlib.py", line 158, in __exit__
+    self.gen.throw(typ, value, traceback)
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ReadTimeout: timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/openai/_base_client.py", line 1019, in request
+    response = self._send_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/openai/_client.py", line 400, in _send_request
+    return self._send_with_auth_retry(request, stream=stream, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/openai/_client.py", line 378, in _send_with_auth_retry
+    response = super()._send_request(request, stream=stream, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/openai/_base_client.py", line 947, in _send_request
+    return self._client.send(request, stream=stream, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpx/_transports/default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+  File "/Users/sss/.local/share/uv/python/cpython-3.11.11-macos-x86_64-none/lib/python3.11/contextlib.py", line 158, in __exit__
+    self.gen.throw(typ, value, traceback)
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout: timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/architecture/real_engine.py", line 43, in step
+    response = call_llm(
+               ^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/agent/auxiliary_client.py", line 2386, in call_llm
+    client.chat.completions.create(**kwargs), task)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/openai/_utils/_utils.py", line 286, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/openai/resources/chat/completions/completions.py", line 1211, in create
+    return self._post(
+           ^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/openai/_base_client.py", line 1314, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/venv/lib/python3.11/site-packages/openai/_base_client.py", line 1037, in request
+    raise APITimeoutError(request=request) from err
+openai.APITimeoutError: Request timed out.
+[分支 1 执行工具] browser_navigate({"url": "https://www.researchgate.net/search?q=agent+harness+framework"})
+
+[验证器] 正在对 1 个探索分支进行过程打分...
+  └─ 分支 root_0_child_1_child_1_child_1_child_1_child_2_child_2_child_2_child_1_child_1 得分: 0.45
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 1/2)...
+
+[AI 回复] 分支 1 返回结果:
+  - 文本内容: 
+  - 工具调用: ['browser_navigate']
+
+[AI 思考中] 正在向 LLM 发送请求 (生成分支 2/2)...
+
+[AI 回复] 分支 2 返回结果:
+  - 文本内容: 
+  - 工具调用: ['browser_navigate']
+[分支 1 执行工具] browser_navigate({"url": "https://arxiv.org/html/2604.13346v1"})
+[分支 2 执行工具] browser_navigate({"url": "https://www.semanticscholar.org/search?q=agent+harness+framework"})
+
+[验证器] 正在对 2 个探索分支进行过程打分...
+  └─ 分支 root_0_child_1_child_1_child_1_child_1_child_2_child_2_child_2_child_1_child_1_child_1 得分: 0.8
+  └─ 分支 root_0_child_1_child_1_child_1_child_1_child_2_child_2_child_2_child_1_child_1_child_2 得分: 0.75
+
+Simulation Complete
+
+Task finished with status: PENDING
+Final History:
+  system: You are Hermes Agent, an intelligent AI assistant. You have access to various tools (e.g. web_search, terminal, 
+write_file).
+=== SYSTEM ENVIRONMENT ===
+Operating System: Darwin
+Working Directory: /Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent
+Date: 2026-04-16
+==========================
+
+You are operating under the following confirmed Goal Contract:
+Original Request: 写一篇500字的Harness Engineering的介绍, 要求先进行网络搜索,在写文档, 
+并要求写入/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/tmp/harness_engineering.md.
+Boundaries: 必须执行网络搜索获取最新信息，并将约500字的文章内容写入指定路径, User clarification: 中英文混合表,主要文字为中文.
+Acceptance Criteria: /Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/tmp/harness_engineering.md, User 
+clarification: Harness Engineering 到底是什么? 通俗来说，Harness Engineering 就是围绕 AI Agent 搭建一整套 
+“可执行、可验证、可约束、可迭代” 的外层运行系统。  这里的 “Harness” 可以理解为驾驭/缰绳，它不是一段 
+Prompt，也不是单个工作流，而是给 Agent 量身定制的 “工作轨道”： • 模型负责思考和决策；• Harness 负责把思考变成稳定执行，它决定 
+Agent 能访问什么、能调用什么、能走到哪一步、什么时候停下、出了错怎么回退、结果如何校验。一句话总结：Prompt 解决 说什么，Context
+解决看什么，Harness 解决怎么干。它把模型偶尔爆发的能力，变成可以 持续复用、规模化交付 的生产力。
+
+IMPORTANT INSTRUCTIONS:
+1. You MUST USE TOOLS to accomplish this task. Do not just output the final text if tools are required.
+2. For example, if asked to search the web and write a file, you MUST call 'web_search' and then 'write_file'.
+3. If a tool call fails or returns an error, DO NOT repeat the exact same tool call. Try a different approach or tool.
+4. Only output a final conversational answer once you have successfully used the tools to meet the Acceptance Criteria.
+  user: Please begin executing the task according to the Goal Contract. REMEMBER: Use tools to search and write the file.
+  assistant: I'll help you create an introduction article about Harness Engineering. Let me first conduct web research to 
+gather relevant information, then compose and write the document.
+
+## Step 1: Web Research on Harness Engineering Concepts
+
+
+  tool: {"success": true, "url": "https://medium.com/search/harness%20engineering", "title": "Just a moment...", 
+"bot_detection_warning": "Page title 'Just a moment...' suggests bot detection. The site may have blocked this request. 
+Options: 1) Try adding delays between actions, 2) Access different pages first, 3) Enable advanced stealth 
+(BROWSERBASE_ADVANCED_STEALTH=true, requires Scale plan), 4) Some sites have very aggressive bot detection that may be 
+unavoidable.", "stealth_warning": "Running WITHOUT residential proxies. Bot detection may be more aggressive. Consider 
+upgrading Browserbase plan for proxy support.", "stealth_features": ["local"], "snapshot": "  - main:\n    - heading 
+\"medium.com\"  \n    - heading \"Performing security verification\"  \n    - paragraph: This website uses a security service 
+to protect against malicious bots. This page is displayed while the website verifies you are not a bot.\n  - contentinfo:\n    
+- text: \"Ray ID:\"\n    - code: 9ed0eaeb4baca29d\n    - text: Performance and Security by\n    - link \"Cloudflare\" :\n      
+- /url: https://www.cloudflare.com?utm_source=challenge&utm_campaign=m\n    - link \"Privacy\" :\n      - /url: 
+https://www.cloudflare.com/privacypolicy/", "element_count": 4}
+  assistant: Let me try alternative sources for research:
+
+
+  tool: {"success": true, "url": 
+"https://www.google.com/sorry/index?continue=https://www.google.com.hk/search%3Fq%3Dharness%2Bengineering%2BAI%2Bagent%2Bframew
+ork%26sei%3DM3ngaabzAqq9ruEP7KnY0Ao&q=EgTLsNf2GLPygc8GIjC9Lzm_zPVChWOdkITNVEDKwWx0KGHE7KHjNe0h1pud8YBsOObsE3bdGbHHXYgIH4QyAVJaA
+UM", "title": "https://www.google.com.hk/search?q=harness+engineering+AI+agent+framework&sei=M3ngaabzAqq9ruEP7KnY0Ao", 
+"snapshot": "  - text: About this page Our systems have detected unusual traffic from your computer network. This page checks 
+to see if it's really you sending the requests, and not a robot.\n  - link \"Why did this happen?\" :\n    - /url: \"#\"\n  - 
+text: \"IP address: 203.176.215.246 Time: 2026-04-16T05:52:52Z URL: 
+https://www.google.com.hk/search?q=harness+engineering+AI+agent+framework&sei=M3ngaabzAqq9ruEP7KnY0Ao\"", "element_count": 1}
+  assistant: [{'id': 'OxS5vmomPQ5usl5UlhUvXxwRk1NwqCWj', 'type': 'function', 'function': {'name': 'browser_navigate', 
+'arguments': '{"url": "https://www.bing.com/search?q=harness+engineering+AI+agent+framework"}'}}]
+  tool: {"success": true, "url": "https://www.bing.com/search?q=harness+engineering+AI+agent+framework", "title": "harness 
+engineering AI agent framework - Suchen", "snapshot": "  - banner:\n    - button \"Weiter zum Inhalt\" \n    - button 
+\"Feedback zur Barrierefreiheit\" \n    - link \"Zurück zur Bing-Suche\" :\n      - /url: /?FORM=Z9FD1\n      - heading 
+\"Zurück zur Bing-Suche\"  \n    - search:\n      - button \"Suche\" \n      - searchbox \"Geben Sie hier Ihre Suche ein – 
+Während Sie tippen, werden Suchvorschläge angezeigt\" : harness engineering AI agent framework\n      - button \"Mit einem Bild
+suchen\" \n    - complementary \"Konto-Prämien und -Einstellungen\":\n      - button \"Microsoft Rewards\" \n      - link 
+\"Anmelden\" :\n        - /url: javascript:void(0)\n    - navigation \"Suchfilter\" :\n        - listitem:\n          - link 
+\"Alle\" :\n            - /url: /?scope=web&FORM=HDRSC1\n        - listitem:\n          - link \"Suchen\" :\n            - 
+/url: /copilotsearch?q=harness+engineering+AI+agent+framework&FORM=CSSCOP\n            - text: Suchen\n        - listitem:\n   
+- link \"Bilder\" :\n            - /url: 
+https://www.bing.com/ck/a?!&&p=7e88980d69537fd8aa3c2e0402160f6f5e35dd9976cb32ca358f7bfb49efb043JmltdHM9MTc3NjIxMTIwMA&ptn=3&ver
+=2&hsh=4&fclid=03dc137d-1c10-6a70-3819-04401d0d6b98&u=a1L2ltYWdlcy9zZWFyY2g_cT1oYXJuZXNzK2VuZ2luZWVyaW5nK0FJK2FnZW50K2ZyYW1ld29
+yayZGT1JNPUhEUlNDMg&ntb=1\n        - listitem:\n          - link \"Videos\" :\n            - /url: 
+https://www.bing.com/ck/a?!&&p=70885a7959ea756b988db39b8274d93d69a3a82dd31a01d0c131787a0b572311JmltdHM9MTc3NjIxMTIwMA&ptn=3&ver
+=2&hsh=4&fclid=03dc137d-1c10-6a70-3819-04401d0d6b98&u=a1L3ZpZGVvcy9zZWFyY2g_cT1oYXJuZXNzK2VuZ2luZWVyaW5nK0FJK2FnZW50K2ZyYW1ld29
+yayZGT1JNPUhEUlNDMw&ntb=1\n        - listitem:\n          - link \"Karten\" :\n            - /url: 
+https://www.bing.com/ck/a?!&&p=890486ad197ebb93daedecfb10e48393aad1ee7525590496958e16437fd1d764JmltdHM9MTc3NjIxMTIwMA&ptn=3&ver
+=2&hsh=4&fclid=03dc137d-1c10-6a70-3819-04401d0d6b98&u=a1L21hcHM_cT1oYXJuZXNzK2VuZ2luZWVyaW5nK0FJK2FnZW50K2ZyYW1ld29yayZGT1JNPUh
+EUlNDNA&ntb=1\n        - listitem:\n          - link \"Neuigkeiten\" :\n            - /url: 
+https://www.bing.com/ck/a?!&&p=a84e544c78f45cc68c1e245c28748ab5e7474398a07bc88140d68e67a2f78913JmltdHM9MTc3NjIxMTIwMA&ptn=3&ver
+=2&hsh=4&fclid=03dc137d-1c10-6a70-3819-04401d0d6b98&u=a1L25ld3Mvc2VhcmNoP3E9aGFybmVzcytlbmdpbmVlcmluZytBSSthZ2VudCtmcmFtZXdvcms
+mRk9STT1IRFJTQzY&ntb=1\n        - listitem:\n          - button \"mehr\" :\n            - text: mehr\n  - contentinfo:\n      -
+listitem:\n        - link \"Datenschutz\" :\n          - /url: 
+https://www.bing.com/ck/a?!&&p=d081744afaa477b550f90942ea126f0a72fb3767e5f19ef4362a9aad76f0f781JmltdHM9MTc3NjIxMTIwMA&ptn=3&ver
+=2&hsh=4&fclid=03dc137d-1c10-6a70-3819-04401d0d6b98&u=a1aHR0cDovL2dvLm1pY3Jvc29mdC5jb20vZndsaW5rLz9MaW5rSWQ9NTIxODM5&ntb=1\n   
+   - listitem:\n        - link \"Bedingungen\" :\n          - /url: 
+https://www.bing.com/ck/a?!&&p=36d10994697a8b75e39fe4ab4bf7282396485a1e3b5c27aea47aab54047815d7JmltdHM9MTc3NjIxMTIwMA&ptn=3&ver
+=2&hsh=4&fclid=03dc137d-1c10-6a70-3819-04401d0d6b98&u=a1aHR0cDovL2dvLm1pY3Jvc29mdC5jb20vZndsaW5rLz9MaW5rSUQ9MjQ2MzM4&ntb=1", 
+"element_count": 19}
+  assistant: [{'id': '1ltmC26rD508M2elQiHjT4xGHRwapmV4', 'type': 'function', 'function': {'name': 'browser_navigate', 
+'arguments': '{"url": "https://en.wikipedia.org/wiki/Software_harness"}'}}]
+  tool: {"success": true, "url": "https://en.wikipedia.org/wiki/Software_harness", "title": "Software harness - Wikipedia", 
+"snapshot": "  - link \"Jump to content\" :\n    - /url: \"#bodyContent\"\n  - banner:\n    - navigation \"Site\" :\n      - 
+button \"Main menu\" \n    - link \"Wikipedia The Free Encyclopedia\" :\n      - /url: /wiki/Main_Page\n    - search:\n      - 
+searchbox \"Search Wikipedia\" \n      - button \"Search\" \n    - navigation \"Personal tools\" :\n        - listitem:\n      
+- link \"Donate\" :\n            - /url: 
+https://donate.wikimedia.org/?wmf_source=donate&wmf_medium=sidebar&wmf_campaign=en.wikipedia.org&uselang=en\n        - 
+listitem:\n          - link \"Create account\" :\n            - /url: 
+/w/index.php?title=Special:CreateAccount&returnto=Software+harness\n        - listitem:\n          - link \"Log in\" :\n       
+- /url: /w/index.php?title=Special:UserLogin&returnto=Software+harness\n  - main:\n    - heading \"Software harness\"  \n    - 
+button \"This article is only available in this language. Add the article for other languages\" \n    - navigation 
+\"Namespaces\" :\n        - listitem:\n          - link \"Article\" :\n            - /url: 
+/w/index.php?title=Software_harness&action=edit&redlink=1\n        - listitem:\n          - link \"Talk\" :\n            - 
+/url: /w/index.php?title=Talk:Software_harness&action=edit&redlink=1\n    - navigation \"Views\" \n    - navigation \"Page 
+tools\" :\n      - button \"Tools\" \n    - navigation \"Appearance\" :\n      - text: Appearance\n      - button \"hide\" \n  
+- text: Text\n        - listitem:\n          - radio \"Small\" \n          - text: Small\n          - radio \"Standard\"  \n   
+- text: Standard\n          - radio \"Large\" \n          - text: Large\n      - text: Width\n        - listitem:\n          - 
+radio \"Standard\"   \n          - text: Standard\n          - radio \"Wide\" \n          - text: Wide\n      - text: Color 
+(beta)\n        - listitem:\n          - radio \"Automatic\" \n          - text: Automatic\n          - radio \"Light\"  \n    
+- text: Light\n          - radio \"Dark\" \n          - text: Dark\n    - text: From Wikipedia, the free encyclopedia Look for 
+Software harness on one of Wikipedia's\n    - link \"sister projects\" :\n      - /url: /wiki/Special:SiteMatrix\n    - text: 
+\":\"\n      - listitem:\n        - link \"Wiktionary\" :\n          - /url: 
+https://en.wiktionary.org/wiki/Special:Search/Software_harness\n        - text: (dictionary)\n      - listitem:\n        - link
+\"Wikibooks\" :\n          - /url: https://en.wikibooks.org/wiki/Special:Search/Software_harness\n        - text: (textbooks)\n
+- listitem:\n        - link \"Wikiquote\" :\n          - /url: https://en.wikiquote.org/wiki/Special:Search/Software_harness\n 
+- text: (quotations)\n      - listitem:\n        - link \"Wikisource\" :\n          - /url: 
+https://en.wikisource.org/wiki/Special:Search/Software_harness\n        - text: (library)\n      - listitem:\n        - link 
+\"Wikiversity\" :\n          - /url: https://en.wikiversity.org/wiki/Special:Search/Software_harness\n        - text: (learning
+resources)\n      - listitem:\n        - link \"Commons\" :\n          - /url: 
+https://commons.wikimedia.org/wiki/Special:Search/Software_harness\n        - text: (media)\n      - listitem:\n        - link 
+\"Wikivoyage\" :\n          - /url: https://en.wikivoyage.org/wiki/Special:Search/Software_harness\n        - text: (travel 
+guide)\n      - listitem:\n        - link \"Wikinews\" :\n          - /url: 
+https://en.wikinews.org/wiki/Special:Search/Software_harness\n        - text: (news source)\n      - listitem:\n        - link 
+\"Wikidata\" :\n          - /url: https://www.wikidata.org/wiki/Special:Search/Software_harness\n        - text: (linked 
+database)\n      - listitem:\n        - link \"Wikispecies\" :\n          - /url: 
+https://species.wikimedia.org/wiki/Special:Search/Software_harness\n        - text: (species directory)\n    - text: Wikipedia 
+does not have an article with this exact name. Please\n    - link \"search for Software harness in Wikipedia\" :\n      - /url:
+https://en.wikipedia.org/w/index.php?search=Software+harness&title=Special%3ASearch&fulltext=1\n    - text: to check for 
+alternative titles or spellings.\n      - listitem:\n        - text: You need to\n        - link \"log in or create an 
+account\" :\n          - /url: https://en.wikipedia.org/w/index.php?title=Special:UserLogin&returnto=Software+harness\n        
+- text: and be\n        - link \"autoconfirmed\" :\n          - /url: /wiki/Wikipedia:User_access_levels#Autoconfirmed_users\n 
+- text: to create new articles. Alternatively, you can use the\n        - link \"article wizard\" :\n          - /url: 
+/wiki/Wikipedia:Article_wizard\n        - text: to submit a draft for review, or\n        - link \"request a new article\" :\n 
+- /url: /wiki/Wikipedia:Requested_articles\n        - text: .\n      - listitem:\n        - link \"Search for \\\" Software 
+harness\\\"\":\n          - /url: 
+https://en.wikipedia.org/w/index.php?search=Software+harness&title=Special%3ASearch&fulltext=1&ns0=1\n        - text: in 
+existing articles.\n      - listitem:\n        - link \"Look for pages within Wikipedia that link to this title\" :\n          
+- /url: /wiki/Special:WhatLinksHere/Software_harness\n        - text: .\n    - paragraph: \"Other reasons this message may be 
+displayed:\"\n      - listitem:\n        - text: If a page was recently created here, it may not be visible yet because of a 
+delay in updating the database; wait a few minutes or\n        - link \"try the purge function\" :\n          - /url: 
+/wiki/Special:Purge/Software_harness\n        - text: .\n      - listitem:\n        - text: Titles on Wikipedia are\n        - 
+link \"case sensitive\" :\n          - /url: /wiki/Case_sensitivity\n        - text: except for the first character; please\n  
+- link \"check alternative capitalizations\" :\n          - /url: 
+https://en.wikipedia.org/w/index.php?search=Software+harness&title=Special%3ASearch&fulltext=1\n        - text: and consider 
+adding a\n        - link \"redirect\" :\n          - /url: /wiki/Wikipedia:Redirect\n        - text: here to the correct 
+title.\n      - listitem:\n        - text: If the page has been deleted,\n        - link \"check the deletion log\" :\n        
+- /url: https://en.wikipedia.org/w/index.php?title=Special:Log/delete&page=Software_harness\n        - text: \", and see\"\n   
+- link \"Why was the page I created deleted?\" :\n          - /url: /wiki/Wikipedia:Why_was_the_page_I_created_deleted%3F\n  - 
+contentinfo:\n      - listitem:\n        - link \"Privacy policy\" :\n          - /url: 
+https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Privacy_policy\n      - listitem:\n        - link \"About 
+Wikipedia\" :\n          - /url: /wiki/Wikipedia:About\n      - listitem:\n        - link \"Disclaimers\" :\n          - /url: 
+/wiki/Wikipedia:General_disclaimer\n      - listitem:\n        - link \"Contact Wikipedia\" :\n          - /url: 
+//en.wikipedia.org/wiki/Wikipedia:Contact_us\n      - listitem:\n        - link \"Legal & safety contacts\" :\n          - 
+/url: 
+https://foundation.wikimedia.org/wiki/Special:MyLanguage/Legal:Wikimedia_Foundation_Legal_and_Safety_Contact_Information\n     
+- listitem:\n        - link \"Code of Conduct\" :\n          - /url: 
+https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Universal_Code_of_Conduct\n      - listitem:\n        - link 
+\"Developers\" :\n          - /url: https://developer.wikimedia.org\n      - listitem:\n        - link \"Statistics\" :\n      
+- /url: https://stats.wikimedia.org/#/en.wikipedia.org\n      - listitem:\n\n[... 11 more lines truncated, use browser_snapshot
+for full content]", "element_count": 64}
+  assistant: [{'id': 'B9RGRreYYJEjOQxlAWWVZ3O7UWWNIpz1', 'type': 'function', 'function': {'name': 'browser_navigate', 
+'arguments': '{"url": "https://github.com/topics/ai-agent-harness"}'}}]
+  tool: {"success": true, "url": "https://github.com/topics/ai-agent-harness", "title": "ai-agent-harness · GitHub Topics · 
+GitHub", "snapshot": "  - link \"Skip to content\" :\n    - /url: \"#start-of-content\"\n  - banner:\n    - heading 
+\"Navigation Menu\"  \n    - link \"Homepage\" :\n      - /url: /\n    - navigation \"Global\" :\n        - listitem:\n        
+- button \"Platform\" \n        - listitem:\n          - button \"Solutions\" \n        - listitem:\n          - button 
+\"Resources\" \n        - listitem:\n          - button \"Open Source\" \n        - listitem:\n          - button 
+\"Enterprise\" \n        - listitem:\n          - link \"Pricing\" :\n            - /url: https://github.com/pricing\n    - 
+button \"Search or jump to…\" \n    - link \"Sign in\" :\n      - /url: 
+/login?return_to=https%3A%2F%2Fgithub.com%2Ftopics%2Fai-agent-harness\n    - link \"Sign up\" :\n      - /url: 
+/signup?ref_cta=Sign+up&ref_loc=header+logged+out&ref_page=%2Ftopics%2Fai-agent-harness&source=header\n    - button 
+\"Appearance settings\" \n  - main:\n    - navigation \"Explore navigation\" :\n      - link \"Explore\" :\n        - /url: 
+/explore\n      - link \"Topics\" :\n        - /url: /topics\n      - link \"Trending\" :\n        - /url: /trending\n      - 
+link \"Collections\" :\n        - /url: /collections\n      - link \"Events\" :\n        - /url: /events\n      - link \"GitHub
+Sponsors\" :\n        - /url: /sponsors/explore\n    - text: \"#\"\n    - heading \"ai-agent-harness\"  \n    - link \"You must
+be signed in to star a repository\" :\n      - /url: /login?return_to=%2Ftopics\n      - text: Star\n    - text: The\n    - 
+strong: ai-agent-harness\n    - text: topic hasn't been used on any public repositories, yet.\n    - link \"Explore topics\" 
+:\n      - /url: /topics\n    - heading \"Improve this page\"  \n    - paragraph: Add a description, image, and links to the 
+ai-agent-harness topic page so that developers can more easily learn about it.\n    - paragraph:\n      - link \"Curate this 
+topic\" :\n        - /url: 
+https://github.com/github/explore/tree/master/CONTRIBUTING.md?source=add-description-ai-agent-harness\n    - heading \"Add this
+topic to your repo\"  \n    - paragraph: To associate your repository with the ai-agent-harness topic, visit your repo's 
+landing page and select \"manage topics.\"\n    - paragraph:\n      - link \"Learn more\" :\n        - /url: 
+https://docs.github.com/en/articles/classifying-your-repository-with-topics\n  - contentinfo:\n    - heading \"Footer\"  \n    
+- link \"GitHub Homepage\" :\n      - /url: https://github.com\n    - text: © 2026 GitHub, Inc.\n    - navigation \"Footer\" 
+:\n      - heading \"Footer navigation\"  \n      - list \"Footer navigation\":\n        - listitem:\n          - link 
+\"Terms\" :\n            - /url: https://docs.github.com/site-policy/github-terms/github-terms-of-service\n        - 
+listitem:\n          - link \"Privacy\" :\n            - /url: 
+https://docs.github.com/site-policy/privacy-policies/github-privacy-statement\n        - listitem:\n          - link 
+\"Security\" :\n            - /url: https://github.com/security\n        - listitem:\n          - link \"Status\" :\n          
+- /url: https://www.githubstatus.com/\n        - listitem:\n          - link \"Community\" :\n            - /url: 
+https://github.community/\n        - listitem:\n          - link \"Docs\" :\n            - /url: https://docs.github.com/\n    
+- listitem:\n          - link \"Contact\" :\n            - /url: https://support.github.com?tags=dotcom-footer\n        - 
+listitem:\n          - button \"Manage cookies\" \n        - listitem:\n          - button \"Do not share my personal 
+information\" ", "element_count": 41}
+  assistant: [{'id': 'VWYtdYHuYLHK1uhvcaE7KpOyeGkGSeRX', 'type': 'function', 'function': {'name': 'browser_navigate', 
+'arguments': '{"url": "https://arxiv.org/search/cs?query=agent+harness+framework&searchtype=all"}'}}]
+  tool: {"success": true, "url": "https://arxiv.org/search/cs?query=agent+harness+framework&searchtype=all", "title": "Search |
+arXiv e-print repository", "snapshot": "  - banner:\n    - link \"Skip to main content\" :\n      - /url: \"#main-container\"\n
+- banner:\n      - link \"logo\" :\n        - /url: https://cornell.edu/\n      - paragraph:\n        - text: We gratefully 
+acknowledge support from the Simons Foundation,\n        - link \"member institutions\" :\n          - /url: 
+https://info.arxiv.org/about/ourmembers.html\n        - text: \", and all contributors.\"\n        - link \"Donate\" :\n       
+- /url: https://info.arxiv.org/about/donate.html\n    - link \"arxiv-logo\" :\n      - /url: https://arxiv.org/\n    - textbox 
+\"Search term or terms\" :\n      - /placeholder: Search...\n    - paragraph:\n      - link \"Help\" :\n        - /url: 
+https://info.arxiv.org/help\n      - text: \"|\"\n      - link \"Advanced Search\" :\n        - /url: 
+https://arxiv.org/search/advanced\n    - combobox \"Field to search\" :\n      - option \"All fields\"  \n      - option 
+\"Title\" \n      - option \"Author\" \n      - option \"Abstract\" \n      - option \"Comments\" \n      - option \"Journal 
+reference\" \n      - option \"ACM classification\" \n      - option \"MSC classification\" \n      - option \"Report number\" 
+\n      - option \"arXiv identifier\" \n      - option \"DOI\" \n      - option \"ORCID\" \n      - option \"arXiv author ID\" 
+\n      - option \"Help pages\" \n      - option \"Full text\" \n    - button \"Search\" \n    - navigation \"User menu\" :\n  
+- link \"Login\" :\n        - /url: https://arxiv.org/login\n  - main:\n    - 'heading \"Showing 1–50 of 192 results for all: 
+agent harness framework\" '\n    - link \"Search v0.5.6 released 2020-02-24\" :\n      - /url: 
+https://github.com/arXiv/arxiv-search/releases\n    - text: Searching in archive\n    - strong: cs\n    - text: .\n    - link 
+\"Search in all archives.\" :\n      - /url: /search/?query=agent+harness+framework&searchtype=all\n    - text: Search term or 
+terms\n    - textbox \"Search term or terms\"  :\n      - /placeholder: Search term...\n      - text: agent harness framework\n
+- combobox \"Field\" :\n      - option \"All fields\"   \n      - option \"Title\"  \n      - option \"Author(s)\" \n      - 
+option \"Abstract\"  \n      - option \"Comments\"  \n      - option \"Journal reference\"  \n      - option \"ACM 
+classification\"  \n      - option \"MSC classification\"  \n      - option \"Report number\"  \n      - option \"arXiv 
+identifier\"  \n      - option \"DOI\"  \n      - option \"ORCID\"  \n      - option \"License (URI)\" \n      - option \"arXiv
+author ID\"  \n      - option \"Help pages\"  \n      - option \"Full text\"  \n    - button \"Search\"  \n    - radio \"Show 
+abstracts Show abstracts\"  \n    - text: Show abstracts\n    - radio \"Hide abstracts Hide abstracts\" \n    - text: Hide 
+abstracts\n    - link \"Advanced Search\"  :\n      - /url: 
+/search/advanced?terms-0-term=agent+harness+framework&terms-0-field=all&size=50&order=-announced_date_first\n    - combobox 
+\"results per page\" :\n      - option \"25\" \n      - option \"50\"  \n      - option \"100\" \n      - option \"200\" \n    
+- text: results per page. Sort results by\n    - combobox \"Sort results by\" :\n      - option \"Announcement date (newest 
+first)\"  \n      - option \"Announcement date (oldest first)\" \n      - option \"Submission date (newest first)\" \n      - 
+option \"Submission date (oldest first)\" \n      - option \"Relevance\" \n    - button \"Go\" \n    - navigation 
+\"pagination\" :\n      - link \"Next\" :\n        - /url: /search/?query=agent+harness+framework&searchtype=all&start=50\n    
+- listitem:\n          - link \"Goto page 1\" :\n            - /url: 
+/search/?query=agent+harness+framework&searchtype=all&start=0\n            - text: \"1\"\n        - listitem:\n          - link
+\"Page 2\" :\n            - /url: /search/?query=agent+harness+framework&searchtype=all&start=50\n            - text: \"2\"\n  
+- listitem:\n          - link \"Page 3\" :\n            - /url: 
+/search/?query=agent+harness+framework&searchtype=all&start=100\n            - text: \"3\"\n        - listitem:\n          - 
+link \"Page 4\" :\n            - /url: /search/?query=agent+harness+framework&searchtype=all&start=150\n            - text: 
+\"4\"\n      - listitem:\n        - paragraph:\n          - link \"arXiv:2604.13346\" :\n            - /url: 
+https://arxiv.org/abs/2604.13346\n          - text: \"[\"\n          - link \"pdf\" :\n            - /url: 
+https://arxiv.org/pdf/2604.13346\n          - text: \",\"\n          - link \"ps\" :\n            - /url: 
+https://arxiv.org/ps/2604.13346\n          - text: \",\"\n          - link \"other\" :\n            - /url: 
+https://arxiv.org/format/2604.13346\n          - text: \"]\"\n        - text: cs.CL\n        - paragraph: \"AgentSPEX: An Agent
+SPecification and EXecution Language\"\n        - paragraph:\n          - text: \"Authors:\"\n          - link \"Pengcheng 
+Wang\" :\n            - /url: /search/cs?searchtype=author&query=Wang%2C+P\n          - text: \",\"\n          - link \"Jerry 
+Huang\" :\n            - /url: /search/cs?searchtype=author&query=Huang%2C+J\n          - text: \",\"\n          - link 
+\"Jiarui Yao\" :\n            - /url: /search/cs?searchtype=author&query=Yao%2C+J\n          - text: \",\"\n          - link 
+\"Rui Pan\" :\n            - /url: /search/cs?searchtype=author&query=Pan%2C+R\n          - text: \",\"\n          - link 
+\"Peizhi Niu\" :\n            - /url: /search/cs?searchtype=author&query=Niu%2C+P\n          - text: \",\"\n          - link 
+\"Yaowenqi Liu\" :\n            - /url: /search/cs?searchtype=author&query=Liu%2C+Y\n          - text: \",\"\n          - link 
+\"Ruida Wang\" :\n            - /url: /search/cs?searchtype=author&query=Wang%2C+R\n          - text: \",\"\n          - link 
+\"Renhao Lu\" :\n            - /url: /search/cs?searchtype=author&query=Lu%2C+R\n          - text: \",\"\n          - link 
+\"Yuwei Guo\" :\n            - /url: /search/cs?searchtype=author&query=Guo%2C+Y\n          - text: \",\"\n          - link 
+\"Tong Zhang\" :\n            - /url: /search/cs?searchtype=author&query=Zhang%2C+T\n        - paragraph: \"Abstract: 
+Language-model agent systems commonly rely on reactive prompting, in which a single instruction guides the model through an 
+open-ended sequence of reasoning and tool-use steps, leaving control flow and intermediate state implicit and making… ▽ 
+More\"\n        - paragraph: Submitted 14 April, 2026; originally announced April 2026.\n      - listitem:\n        - 
+paragraph:\n          - link \"arXiv:2604.11784\" :\n            - /url: https://arxiv.org/abs/2604.11784\n          - text: 
+\"[\"\n          - link \"pdf\"  :\n            - /url: https://arxiv.org/pdf/2604.11784\n          - text: \",\"\n          - 
+link \"ps\"  :\n            - /url: https://arxiv.org/ps/2604.11784\n          - text: \",\"\n          - link \"other\"  :\n  
+- /url: https://arxiv.org/format/2604.11784\n          - text: \"]\"\n        - text: cs.LG cs.AI cs.CL cs.CV\n        - 
+paragraph: \"ClawGUI: A Unified Framework for Training, Evaluating, and Deploying GUI Agents\"\n        - paragraph:\n         
+- text: \"Authors:\"\n          - link \"Fei Tang\" :\n            - /url: /search/cs?searchtype=author&query=Tang%2C+F\n      
+- text: \",\"\n          - link \"Zhiqiong Lu\" :\n\n[... 1921 more lines truncated, use browser_snapshot for full content]", 
+"element_count": 606}
+  assistant: [{'id': '9tVBA9FbLxjB981yceXpX3BA6pPXZrdU', 'type': 'function', 'function': {'name': 'browser_navigate', 
+'arguments': '{"url": "https://arxiv.org/abs/2604.13346"}'}}]
+  tool: {"success": true, "url": "https://arxiv.org/abs/2604.13346", "title": "[2604.13346] AgentSPEX: An Agent SPecification 
+and EXecution Language", "snapshot": "  - banner:\n    - link \"Skip to main content\" :\n      - /url: \"#content\"\n    - 
+link \"Cornell University\" :\n      - /url: https://www.cornell.edu/\n    - link \"Learn about arXiv becoming an independent 
+nonprofit.\" :\n      - /url: https://tech.cornell.edu/arxiv/\n    - text: We gratefully acknowledge support from the Simons 
+Foundation,\n    - link \"member institutions\" :\n      - /url: https://info.arxiv.org/about/ourmembers.html\n    - text: \", 
+and all contributors.\"\n    - link \"Donate\" :\n      - /url: https://info.arxiv.org/about/donate.html\n    - link \"arxiv 
+logo\" :\n      - /url: /\n    - text: \">\"\n    - link \"cs\" :\n      - /url: /list/cs/recent\n    - text: \"> 
+arXiv:2604.13346\"\n    - textbox \"Search term or terms\" :\n      - /placeholder: Search...\n    - paragraph:\n      - link 
+\"Help\" :\n        - /url: https://info.arxiv.org/help\n      - text: \"|\"\n      - link \"Advanced Search\" :\n        - 
+/url: https://arxiv.org/search/advanced\n    - combobox \"Field to search\" :\n      - option \"All fields\"  \n      - option 
+\"Title\" \n      - option \"Author\" \n      - option \"Abstract\" \n      - option \"Comments\" \n      - option \"Journal 
+reference\" \n      - option \"ACM classification\" \n      - option \"MSC classification\" \n      - option \"Report number\" 
+\n      - option \"arXiv identifier\" \n      - option \"DOI\" \n      - option \"ORCID\" \n      - option \"arXiv author ID\" 
+\n      - option \"Help pages\" \n      - option \"Full text\" \n    - button \"Search\" \n  - main:\n    - heading \"Computer 
+Science > Computation and Language\"  \n    - text: \"[Submitted on 14 Apr 2026]\"\n    - 'heading \"AgentSPEX: An Agent 
+SPecification and EXecution Language\" '\n    - link \"Pengcheng Wang\" :\n      - /url: 
+https://arxiv.org/search/cs?searchtype=author&query=Wang,+P\n    - text: \",\"\n    - link \"Jerry Huang\" :\n      - /url: 
+https://arxiv.org/search/cs?searchtype=author&query=Huang,+J\n    - text: \",\"\n    - link \"Jiarui Yao\" :\n      - /url: 
+https://arxiv.org/search/cs?searchtype=author&query=Yao,+J\n    - text: \",\"\n    - link \"Rui Pan\" :\n      - /url: 
+https://arxiv.org/search/cs?searchtype=author&query=Pan,+R\n    - text: \",\"\n    - link \"Peizhi Niu\" :\n      - /url: 
+https://arxiv.org/search/cs?searchtype=author&query=Niu,+P\n    - text: \",\"\n    - link \"Yaowenqi Liu\" :\n      - /url: 
+https://arxiv.org/search/cs?searchtype=author&query=Liu,+Y\n    - text: \",\"\n    - link \"Ruida Wang\" :\n      - /url: 
+https://arxiv.org/search/cs?searchtype=author&query=Wang,+R\n    - text: \",\"\n    - link \"Renhao Lu\" :\n      - /url: 
+https://arxiv.org/search/cs?searchtype=author&query=Lu,+R\n    - text: \",\"\n    - link \"Yuwei Guo\" :\n      - /url: 
+https://arxiv.org/search/cs?searchtype=author&query=Guo,+Y\n    - text: \",\"\n    - link \"Tong Zhang\" :\n      - /url: 
+https://arxiv.org/search/cs?searchtype=author&query=Zhang,+T\n    - blockquote: Language-model agent systems commonly rely on 
+reactive prompting, in which a single instruction guides the model through an open-ended sequence of reasoning and tool-use 
+steps, leaving control flow and intermediate state implicit and making agent behavior potentially difficult to control. 
+Orchestration frameworks such as LangGraph, DSPy, and CrewAI impose greater structure through explicit workflow definitions, 
+but tightly couple workflow logic with Python, making agents difficult to maintain and modify. In this paper, we introduce 
+AgentSPEX, an Agent SPecification and EXecution Language for specifying LLM-agent workflows with explicit control flow and 
+modular structure, along with a customizable agent harness. AgentSPEX supports typed steps, branching and loops, parallel 
+execution, reusable submodules, and explicit state management, and these workflows execute within an agent harness that 
+provides tool access, a sandboxed virtual environment, and support for checkpointing, verification, and logging. Furthermore, 
+we provide a visual editor with synchronized graph and workflow views for authoring and inspection. We include ready-to-use 
+agents for deep research and scientific research, and we evaluate AgentSPEX on 7 benchmarks. Finally, we show through a user 
+study that AgentSPEX provides a more interpretable and accessible workflow-authoring paradigm than a popular existing agent 
+framework.\n    - table \"Additional metadata\":\n        - 'row \"Subjects: Computation and Language (cs.CL)\"':\n          - 
+cell \"Subjects:\" \n          - cell \"Computation and Language (cs.CL)\" \n        - 'row \"Cite as: arXiv:2604.13346 \"':\n 
+- cell \"Cite as:\" \n          - cell \"arXiv:2604.13346 \" :\n            - link \"arXiv:2604.13346\" :\n              - 
+/url: https://arxiv.org/abs/2604.13346\n            - text: \"\"\n        - row \"(or arXiv:2604.13346v1  for this 
+version)\":\n          - cell \"(or arXiv:2604.13346v1  for this version)\" :\n            - text: (or\n            - link 
+\"arXiv:2604.13346v1\" :\n              - /url: https://arxiv.org/abs/2604.13346v1\n            - text: \" for this 
+version)\"\n        - row \"https://doi.org/10.48550/arXiv.2604.13346 Focus to learn more\":\n          - cell 
+\"https://doi.org/10.48550/arXiv.2604.13346 Focus to learn more\" :\n            - link 
+\"https://doi.org/10.48550/arXiv.2604.13346\" :\n              - /url: https://doi.org/10.48550/arXiv.2604.13346\n            -
+button \"Focus to learn more\" \n    - heading \"Submission history\"  \n    - text: \"From: Pengcheng Wang [\"\n    - link 
+\"view email\" :\n      - /url: /show-email/fb2e9824/2604.13346\n    - text: \"]\"\n    - strong: \"\"\n    - text: Tue, 14 Apr
+2026 23:16:25 UTC (3,383 KB)\n    - heading \"Access Paper:\"  \n      - listitem:\n        - link \"View PDF\" :\n          - 
+/url: /pdf/2604.13346\n      - listitem:\n        - link \"HTML (experimental)\" :\n          - /url: 
+https://arxiv.org/html/2604.13346v1\n      - listitem:\n        - link \"TeX Source\" :\n          - /url: /src/2604.13346\n   
+- link \"view license\" :\n      - /url: http://creativecommons.org/licenses/by/4.0/\n    - heading \"Current browse context:\"
+\n    - text: cs.CL\n    - link \"< prev\" :\n      - /url: /prevnext?id=2604.13346&function=prev&context=cs.CL\n    - text: 
+\"|\"\n    - link \"next >\" :\n      - /url: /prevnext?id=2604.13346&function=next&context=cs.CL\n    - link \"new\" :\n      
+- /url: /list/cs.CL/new\n    - text: \"|\"\n    - link \"recent\" :\n      - /url: /list/cs.CL/recent\n    - text: \"|\"\n    -
+link \"2026-04\" :\n      - /url: /list/cs.CL/2026-04\n    - text: \"Change to browse by:\"\n    - link \"cs\"  :\n      - 
+/url: /abs/2604.13346?context=cs\n    - heading \"References & Citations\"  \n      - listitem:\n        - link \"NASA ADS\" 
+:\n          - /url: https://ui.adsabs.harvard.edu/abs/arXiv:2604.13346\n      - listitem:\n        - link \"Google Scholar\" 
+:\n          - /url: https://scholar.google.com/scholar_lookup?arxiv_id=2604.13346\n      - listitem:\n        - link 
+\"Semantic Scholar\" :\n          - /url: https://api.semanticscholar.org/arXiv:2604.13346\n    - button \"export BibTeX 
+citation\" \n    - heading \"Bookmark\"  \n    - link \"BibSonomy\" :\n      - /url: 
+\"http://www.bibsonomy.org/BibtexHandler?requTask=upload&url=https://arxiv.org/abs/2604.13346&description=AgentSPEX: An Agent 
+SPecification and EXecution Language\"\n    - link \"Reddit\" :\n\n[... 78 more lines truncated, use browser_snapshot for full 
+content]", "element_count": 101}
+  assistant: [{'id': 'w5Nq3pbtkkXqvkPgsLHZwGPC1nW2D32M', 'type': 'function', 'function': {'name': 'browser_navigate', 
+'arguments': '{"url": "https://langchain-ai.github.io/langgraph/"}'}}]
+  tool: {"success": true, "url": "https://docs.langchain.com/oss/python/langgraph/overview", "title": "LangGraph overview - 
+Docs by LangChain", "snapshot": "  - link \"Skip to main content\" :\n    - /url: \"#content-area\"\n  - paragraph:\n    - 
+text: Join us May 13th & May 14th at Interrupt, the Agent Conference by LangChain.\n    - link \"Buy tickets >\" :\n      - 
+/url: https://interrupt.langchain.com/\n  - button \"Dismiss banner\" \n  - link \"Docs by LangChain home page light logo\" :\n
+- /url: /\n    - text: Docs by LangChain home page\n  - button 
+\"https://mintlify.s3.us-west-1.amazonaws.com/langchain-5e9cc07a/images/brand/langchain-icon.png Open source\" :\n    - img 
+\"https://mintlify.s3.us-west-1.amazonaws.com/langchain-5e9cc07a/images/brand/langchain-icon.png\"\n    - text: Open source\n  
+- button \"Open search\" :\n    - text: Search... ⌘K\n  - navigation:\n      - listitem:\n        - link \"Ask AI\" :\n        
+- /url: https://chat.langchain.com/\n          - text: Ask AI\n      - listitem:\n        - link \"GitHub\" :\n          - 
+/url: https://github.com/langchain-ai\n          - text: GitHub\n      - listitem:\n        - link \"Try LangSmith\" :\n       
+- /url: https://smith.langchain.com/\n          - text: Try LangSmith\n  - button \"Toggle dark mode\" :\n  - link \"Deep 
+Agents\" :\n    - /url: /oss/python/deepagents/overview\n  - link \"LangChain\" :\n    - /url: /oss/python/langchain/overview\n
+- link \"LangGraph\" :\n    - /url: /oss/python/langgraph/overview\n  - link \"Integrations\" :\n    - /url: 
+/oss/python/integrations/providers/overview\n  - link \"Learn\" :\n    - /url: /oss/python/learn\n  - link \"Reference\" :\n   
+- /url: /oss/python/reference/overview\n  - link \"Contribute\" :\n    - /url: /oss/python/contributing/overview\n  - button 
+\"Python\" :\n    - paragraph: Python\n    - listitem:\n      - link \"Overview\" :\n        - /url: 
+/oss/python/langgraph/overview\n  - heading \"Get started\"  \n    - listitem:\n      - link \"Install\" :\n        - /url: 
+/oss/python/langgraph/install\n    - listitem:\n      - link \"Quickstart\" :\n        - /url: 
+/oss/python/langgraph/quickstart\n    - listitem:\n      - link \"Local server\" :\n        - /url: 
+/oss/python/langgraph/local-server\n    - listitem:\n      - link \"Changelog\" :\n        - /url: 
+https://docs.langchain.com/oss/python/releases/changelog\n        - text: Changelog\n    - listitem:\n      - link \"Thinking 
+in LangGraph\" :\n        - /url: /oss/python/langgraph/thinking-in-langgraph\n    - listitem:\n      - link \"Workflows + 
+agents\" :\n        - /url: /oss/python/langgraph/workflows-agents\n  - heading \"Capabilities\"  \n    - listitem:\n      - 
+link \"Persistence\" :\n        - /url: /oss/python/langgraph/persistence\n    - listitem:\n      - link \"Durable execution\" 
+:\n        - /url: /oss/python/langgraph/durable-execution\n    - listitem:\n      - link \"Streaming\" :\n        - /url: 
+/oss/python/langgraph/streaming\n    - listitem:\n      - link \"Interrupts\" :\n        - /url: 
+/oss/python/langgraph/interrupts\n    - listitem:\n      - link \"Time travel\" :\n        - /url: 
+/oss/python/langgraph/use-time-travel\n    - listitem:\n      - link \"Memory\" :\n        - /url: 
+/oss/python/langgraph/add-memory\n    - listitem:\n      - link \"Subgraphs\" :\n        - /url: 
+/oss/python/langgraph/use-subgraphs\n  - heading \"Production\"  \n    - listitem:\n      - link \"Application structure\" :\n 
+- /url: /oss/python/langgraph/application-structure\n    - listitem:\n      - link \"Test\" :\n        - /url: 
+/oss/python/langgraph/test\n    - listitem:\n      - link \"LangSmith Studio\" :\n        - /url: 
+/oss/python/langgraph/studio\n    - listitem:\n      - link \"Agent Chat UI\" :\n        - /url: /oss/python/langgraph/ui\n    
+- listitem:\n      - link \"LangSmith Deployment\" :\n        - /url: /oss/python/langgraph/deploy\n    - listitem:\n      - 
+link \"LangSmith Observability\" :\n        - /url: /oss/python/langgraph/observability\n  - heading \"Frontend\"  \n    - 
+listitem:\n      - link \"Overview\"  :\n        - /url: /oss/python/langgraph/frontend/overview\n    - listitem:\n      - link
+\"Graph execution\" :\n        - /url: /oss/python/langgraph/frontend/graph-execution\n  - heading \"LangGraph APIs\"  \n    - 
+listitem:\n      - button \"Toggle Graph API section\" :\n        - text: Graph API\n    - listitem:\n      - button \"Toggle 
+Functional API section\" :\n        - text: Functional API\n    - listitem:\n      - link \"Runtime\" :\n        - /url: 
+/oss/python/langgraph/pregel\n  - button \"On this page\" :\n    - text: On this page\n    - listitem:\n      - link 
+\"Install\"  :\n        - /url: \"#install\"\n    - listitem:\n      - link \"Core benefits\" :\n        - /url: 
+\"#core-benefits\"\n    - listitem:\n      - link \"LangGraph ecosystem\" :\n        - /url: \"#langgraph-ecosystem\"\n    - 
+listitem:\n      - link \"Acknowledgements\" :\n        - /url: \"#acknowledgements\"\n  - banner:\n    - heading \"LangGraph 
+overview\"  \n    - button \"Copy page\" :\n      - text: Copy page\n    - button \"More actions\" :\n  - text: Trusted by 
+companies shaping the future of agents— including Klarna, Uber, J.P. Morgan, and more— LangGraph is a low-level orchestration 
+framework and runtime for building, managing, and deploying long-running, stateful agents. LangGraph is very low-level, and 
+focused entirely on agent\n  - strong: orchestration\n  - text: . Before using LangGraph, we recommend you familiarize yourself
+with some of the components used to build agents, starting with\n  - link \"models\" :\n    - /url: 
+/oss/python/langchain/models\n  - text: and\n  - link \"tools\" :\n    - /url: /oss/python/langchain/tools\n  - text: . We will
+commonly use\n  - link \"LangChain\"  :\n    - /url: /oss/python/langchain/overview\n  - text: components throughout the 
+documentation to integrate models and tools, but you don’t need to use LangChain to use LangGraph. If you are just getting 
+started with agents or want a higher-level abstraction, we recommend you use LangChain’s\n  - link \"agents\" :\n    - /url: 
+/oss/python/langchain/agents\n  - text: \"that provide prebuilt architectures for common LLM and tool-calling loops. LangGraph 
+is focused on the underlying capabilities important for agent orchestration: durable execution, streaming, human-in-the-loop, 
+and more.\"\n  - heading \"Navigate to header Install\"  :\n    - link \"Navigate to header\" :\n      - /url: \"#install\"\n  
+- text: Install\n    - tab \"pip\"  \n    - tab \"uv\" \n  - button \"Copy the contents from the code block\" :\n    - code: 
+pip install -U langgraph\n  - text: \"Then, create a simple hello world example:\"\n  - button \"Copy the contents from the 
+code block\"  :\n  - code: \"from langgraph.graph import StateGraph, MessagesState, START, END def mock_llm(state: 
+MessagesState): return {\\\"messages\\\": [{\\\"role\\\": \\\"ai\\\", \\\"content\\\": \\\"hello world\\\"}]} graph = 
+StateGraph(MessagesState) graph.add_node(mock_llm) graph.add_edge(START, \\\"mock_llm\\\") graph.add_edge(\\\"mock_llm\\\", 
+END) graph = graph.compile() graph.invoke({\\\"messages\\\": [{\\\"role\\\": \\\"user\\\", \\\"content\\\": \\\"hi!\\\"}]})\"\n
+- text: Use\n  - link \"LangSmith\" :\n    - /url: /langsmith/home\n  - text: to trace requests, debug agent behavior, and 
+evaluate outputs. Set\n  - code: LANGSMITH_TRACING=true\n  - text: and your API key to get started.\n  - heading \"Navigate to 
+header Core benefits\"  :\n    - link \"Navigate to header\"  :\n      - /url: \"#core-benefits\"\n    - text: Core benefits\n 
+- text: LangGraph provides low-level supporting infrastructure for\n  - emphasis: any\n\n[... 96 more lines truncated, use 
+browser_snapshot for full content]", "element_count": 105}
+  assistant: [{'id': 'qc5SLBAv3aRz7YUfjgirppJSl6ixBhXT', 'type': 'function', 'function': {'name': 'browser_navigate', 
+'arguments': '{"url": "https://www.researchgate.net/search?q=agent+harness+framework"}'}}]
+  tool: {"success": false, "error": "page.goto: net::ERR_CONNECTION_CLOSED at 
+https://www.researchgate.net/search?q=agent+harness+framework\nCall log:\n\u001b[2m  - navigating to 
+\"https://www.researchgate.net/search?q=agent+harness+framework\", waiting until \"load\"\u001b[22m\n"}
+  assistant: [{'id': '3zgdgXUDQnzfVt5fNITsd7wdUKzYHaPI', 'type': 'function', 'function': {'name': 'browser_navigate', 
+'arguments': '{"url": "https://arxiv.org/html/2604.13346v1"}'}}]
+  tool: {"success": true, "url": "https://arxiv.org/html/2604.13346v1", "title": "AgentSPEX: An Agent SPecification and 
+EXecution Language", "snapshot": "  - banner:\n    - link \"arXiv logo Back to arXiv\" :\n      - /url: /\n      - text: Back 
+to arXiv\n    - navigation:\n      - link \"Why HTML?\" :\n        - /url: https://info.arxiv.org/about/accessible_HTML.html\n 
+- link \"Report Issue\" :\n        - /url: \"#\"\n      - link \"Back to abstract page\" :\n        - /url: /abs/2604.13346v1\n
+- text: Back to Abstract\n      - link \"Download PDF\" :\n        - /url: /pdf/2604.13346v1\n      - link \"Toggle 
+navigation\" :\n        - /url: javascript:toggleNavTOC();\n      - link \"Disable reading mode, show header and footer\" :\n  
+- /url: javascript:toggleReadingMode();\n      - button \"Toggle color scheme\" \n  - navigation:\n    - navigation:\n        -
+listitem:\n          - link \"Abstract\" :\n            - /url: \"#abstract1\"\n        - listitem:\n          - link \"1 
+Introduction\" :\n            - /url: \"#S1\"\n        - listitem:\n          - link \"2 AgentSPEX Design\" :\n            - 
+/url: \"#S2\"\n        - listitem:\n          - link \"3 Agent Harness\" :\n            - /url: \"#S3\"\n        - listitem:\n 
+- link \"4 Demos and Evaluation\" :\n            - /url: \"#S4\"\n    - /url: 
+https://info.arxiv.org/help/license/index.html#licenses-available\n  - text: arXiv:2604.13346v1  14 Apr 2026\n  - article:\n   
+- 'heading \"AgentSPEX: An Agent SPecification and EXecution Language\" '\n    - text: Pengcheng Wang\n      - math: ♠\n    - 
+superscript: \"*\"\n    - text: \", Jerry Huang\"\n      - math: ♠\n    - superscript: \"*\"\n    - text: \", Jiarui Yao\"\n   
+- math: ♠\n    - superscript: \"*\"\n    - text: \", Rui Pan\"\n      - math: ♠\n    - text: \", Peizhi Niu\"\n      - math: 
+♠\n    - text: \", Yaowenqi Liu\"\n      - math: ♠\n    - text: \", Ruida Wang\"\n      - math: ♠\n    - text: \", Renhao 
+Lu\"\n      - math: ♣\n    - text: \", Yuwei Guo\"\n      - math: ♡\n    - text: \", Tong Zhang\"\n      - math: ♠\n      - 
+math: ♠\n    - text: University of Illinois Urbana-Champaign\n      - math: ♡\n    - text: University of Wisconsin–Madison\n   
+- math: ♣\n    - text: Baylor College of Medicine\n    - superscript: \"*\"\n    - text: \"Equal contribution. {pw29, jerry8, 
+jiarui14}@illinois.edu\"\n    - heading \"Abstract\"  \n    - paragraph: Language-model agent systems commonly rely on reactive
+prompting, in which a single instruction guides the model through an open-ended sequence of reasoning and tool-use steps, 
+leaving control flow and intermediate state implicit and making agent behavior potentially difficult to control. Orchestration 
+frameworks such as LangGraph, DSPy, and CrewAI impose greater structure through explicit workflow definitions, but tightly 
+couple workflow logic with Python, making agents difficult to maintain and modify. In this paper, we introduce AgentSPEX, an 
+Agent SPecification and EXecution Language for specifying LLM-agent workflows with explicit control flow and modular structure,
+along with a customizable agent harness. AgentSPEX supports typed steps, branching and loops, parallel execution, reusable 
+submodules, and explicit state management, and these workflows execute within an agent harness that provides tool access, a 
+sandboxed virtual environment, and support for checkpointing, verification, and logging. Furthermore, we provide a visual 
+editor with synchronized graph and workflow views for authoring and inspection. We include ready-to-use agents for deep 
+research and scientific research, and we evaluate AgentSPEX on 7 benchmarks. Finally, we show through a user study that 
+AgentSPEX provides a more interpretable and accessible workflow-authoring paradigm than a popular existing agent framework.\n  
+- row \"Code https://github.com/ScaleML/AgentSPEX\":\n          - cell \"Code\" \n          - cell 
+\"https://github.com/ScaleML/AgentSPEX\" :\n            - link \"https://github.com/ScaleML/AgentSPEX\" :\n              - 
+/url: https://github.com/ScaleML/AgentSPEX\n    - heading \"1 Introduction\"  \n    - paragraph: AI agents have continued to 
+achieve impressive results on complex tasks ranging from resolving real-world GitHub issues ( jimenez2024swebench ; 
+yang2024sweagent ) to performing scientific research ( lu2024ai ; yu-etal-2025-tinyscientist ). Naturally, a rich ecosystem of 
+open- and closed-source frameworks has emerged in tandem to support agent development, including multi-agent conversation 
+systems ( wu2023autogen ), multi-agent collaboration frameworks ( hong2024metagpt ), software development agent frameworks ( 
+yang2024sweagent ; wang2024openhands ; anthropic2026claudecode ), among others.\n      - text: \"Figure 1: An overview of the 
+AgentSPEX Architecture.\"\n    - paragraph: Many agent frameworks today adopt a ReAct-style prompting approach ( yao2023react )
+in which, for a given task, their instructions are specified in a single system prompt–instruction pair. Under such a paradigm,
+an agent reactively executes a sequence of tool calls and reasoning steps conditioned on its growing conversation history ( 
+Du_2026 ). Although this prompting approach is relatively simple to implement in practice, it relies heavily on the inherent 
+capabilities of the chosen foundation model. When compared to more structured problem decomposition and workflow-style 
+approaches, reactive prompting may underperform on longer-horizon tasks, especially those requiring branching and iteration, in
+terms of performance, cost, reproducibility, and controllability ( yihan2026pseudoactleveragingpseudocodesynthesis ; 
+delrosario2025architectingresilientllmagents ).\n    - paragraph: To impose more granular control and structure on agent 
+behavior, agent building frameworks such as LangGraph ( langgraph2024 ), DSPy ( khattab2024dspy ), and CrewAI ( crewai ) 
+provide libraries for defining agent workflows in Python, with features such as stateful graphs with branching and memory, 
+optimizable prompt pipelines, and multi-agent role-based teams. While these frameworks offer greater control over agent 
+execution logic and orchestration, their workflows are highly coupled with Python programming, resulting in steep learning 
+curves and making agents more difficult to modify, maintain, and share with non-programmers.\n    - paragraph:\n      - text: 
+To address these limitations, we introduce AgentSPEX, an Agent SPecification and EXecution Language, with YAML syntax for 
+specifying agent workflows with explicit control flow and modular structure, along with a customizable agent harness. AgentSPEX
+supports typed steps, branching and loops, parallel execution, reusable submodules (subagents), and explicit context 
+management, granting users precise control over both agent behavior and context visibility. Figure\n      - link \"1\" :\n     
+- /url: \"#S1.F1\"\n      - text: illustrates the full architecture of our agent framework.\n    - paragraph: \"Our design 
+philosophy is guided by two principles: AgentSPEX should be expressive enough to capture common agent invocation patterns 
+without requiring modifications to execution source code, and it should remain simple and accessible enough for users to 
+author, inspect, and modify agent behavior with minimal overhead. AgentSPEX features:\"\n        - text: \"1.\"\n        - 
+paragraph: AgentSPEX as the executable specification, in which agent workflows are expressed in declarative, human-readable 
+YAML files.\n        - text: \"2.\"\n        - paragraph: Unified submodule abstraction, in which skills and agents are both 
+represented as workflows and can be freely composed, simplifying the development of modular, multi-level agent systems.\n      
+- text: \"3.\"\n        - paragraph: Explicit conversation history management, giving users direct control over what context 
+each step receives, improving performance, cost-efficiency, and controllability.\n        - text: \"4.\"\n\n[... 161 more lines
+truncated, use browser_snapshot for full content]", "element_count": 83}
+(venv) sss@sssdeMacBook-Pro hermes-agent % 

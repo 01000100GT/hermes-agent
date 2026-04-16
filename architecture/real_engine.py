@@ -164,3 +164,50 @@ class RealMctsEngine(IMctsEngine):
             }
         )
         node.status = NodeStatus.PRUNED
+
+    def apply_override(self, node: MctsNode, feedback: str) -> None:
+        """
+        Injects the human's exact answer into the node's history so the LLM
+        can skip the stuck step and proceed directly.
+        """
+        node.history.append(
+            {
+                "role": "user",
+                "content": f"SYSTEM/HUMAN INTERVENTION: 人类直接为您提供了当前步骤的确切结果或答案：\n{feedback}\n\n请直接基于此结果继续执行下一步操作。",
+            }
+        )
+        node.status = NodeStatus.PENDING
+
+    def diagnose_trajectory(self, node: MctsNode) -> str:
+        """
+        Uses the LLM to diagnose the current stuck trajectory and provide actionable advice for the human.
+        """
+        print("\n[系统诊断] 正在分析 AI 陷入困境的原因并生成建议...")
+        try:
+            import json
+            # Extract recent history to avoid token bloat
+            recent_history = node.history[-6:]
+            history_text = json.dumps(recent_history, ensure_ascii=False, indent=2)
+            
+            prompt = (
+                "你是一个高级AI诊断专家。当前主智能体在执行任务时达到了最大步数限制，可能陷入了死循环或网络困境。\n"
+                "请分析以下最近的执行历史，并用中文简要总结：\n"
+                "1. 它目前卡在了哪里（例如：反复遇到同一个报错、被反爬虫拦截、一直在搜索无用信息等）？\n"
+                "2. 给人类操作员提供 1-2 条具体的下一步建议（例如：让它换个搜索工具、建议人类直接提供上下文、或者让它换个思路）。\n"
+                "请保持回答简明扼要，直接输出诊断和建议即可，不要有任何多余的寒暄。\n\n"
+                f"【最近执行历史】\n{history_text}"
+            )
+            
+            response = call_llm(
+                task="diagnose_trajectory",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3
+            )
+            
+            import re
+            raw_content = response.choices[0].message.content or ""
+            raw_content = re.sub(r'<think>[\s\S]*?</think>', '', raw_content).strip()
+            
+            return f"【诊断报告】\n{raw_content}"
+        except Exception as e:
+            return f"AI 达到了最大探索步数限制，且诊断服务调用失败: {e}"
