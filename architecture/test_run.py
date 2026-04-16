@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from architecture.contracts import MctsNode, NodeStatus
 from architecture.workflow import HermesMctsWorkflow
-from architecture.adapters import DefaultHarnessMonitor, MacCliHitlAdapter
+from architecture.adapters import DefaultHarnessMonitor, MacCliHitlAdapter, MacCliElicitorAdapter, SubagentEvaluatorAdapter
 from architecture.real_engine import RealMctsEngine
 
 try:
@@ -89,35 +89,17 @@ def run_simulation():
 
     # 1. Initialize Dependency Injection
     # We set branching_factor=2 to generate two different thoughts and let the Critic evaluate them
-    engine = RealMctsEngine(branching_factor=2)
+    elicitor = MacCliElicitorAdapter()
+    evaluator = SubagentEvaluatorAdapter()
+    engine = RealMctsEngine(evaluator=evaluator, branching_factor=2)
     harness = DefaultHarnessMonitor()
     hitl = MacCliHitlAdapter()
 
-    workflow = HermesMctsWorkflow(engine, harness, hitl)
+    workflow = HermesMctsWorkflow(elicitor, engine, harness, hitl)
 
-    # 2. Create the root thought node
-    root_node = MctsNode(
-        id="root_0",
-        parent_id=None,
-        # history=[
-        #     {
-        #         "role": "user",
-        #         "content": "思考如何写一个很好的缠中说禅理论的代码实现, 文章写入/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/tmp/缠中说禅理论.md。",
-        #     }
-        # ],
-        history=[
-            {
-                "role": "user",
-                "content": "告诉我vue3是谁开发的.",
-            }
-        ],
-        proposed_tool_calls=[],
-        score=1.0,
-        status=NodeStatus.PENDING,
-    )
-
-    # 3. Start execution loop
-    final_node = workflow.run_task(root_node)
+    # 2. Trigger the full lifecycle (Phase 1 Elicitation -> Phase 2 MCTS)
+    initial_request = "写一篇500字的Harness Engineering的介绍, 要求先进行网络搜索,在写文档, 并要求写入/Users/sss/devprog/devprog_sss/AI_prog/AI_Agents/hermes-agent/tmp/harness_engineering.md."
+    final_node = workflow.run_task(initial_request)
 
     print_header("Simulation Complete")
     if final_node:

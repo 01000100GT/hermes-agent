@@ -25,6 +25,17 @@ class HumanDecision(Enum):
 
 
 @dataclass
+class GoalContract:
+    """
+    The explicitly confirmed final goal.
+    This acts as the 'North Star' for the entire MCTS process.
+    """
+    original_request: str
+    clarified_boundaries: List[str]
+    acceptance_criteria: List[str]
+    is_approved: bool = False
+
+@dataclass
 class MctsNode:
     """Represents a single state/thought branch in the MCTS tree."""
     id: str
@@ -34,6 +45,18 @@ class MctsNode:
     score: float
     status: NodeStatus
 
+
+class IRequirementElicitor(Protocol):
+    """
+    Contract for the requirement elicitation phase.
+    Single Responsibility: Clarify vague requests into a concrete GoalContract with the user.
+    """
+    def clarify_goal(self, initial_request: str) -> GoalContract:
+        """
+        Engage with the user (or LLM + Human in loop) to lock down the boundaries and criteria.
+        Returns the finalized and approved GoalContract.
+        """
+        ...
 
 class IHarnessMonitor(Protocol):
     """
@@ -46,6 +69,19 @@ class IHarnessMonitor(Protocol):
         
     def get_suspend_reason(self) -> str:
         """Returns the reason for suspension (e.g., 'Depth > 3', 'rm -rf detected')."""
+        ...
+
+class IEvaluator(Protocol):
+    """
+    Contract for node evaluation.
+    Single Responsibility: Evaluate the progress of a node toward the goal, providing a score and feedback.
+    """
+    def evaluate_step(self, node: MctsNode, goal: GoalContract) -> float:
+        """Evaluate an intermediate step, returning a score between 0.0 and 1.0."""
+        ...
+        
+    def check_acceptance(self, node: MctsNode, goal: GoalContract) -> bool:
+        """Check if the final acceptance criteria are fully met."""
         ...
 
 
@@ -68,10 +104,10 @@ class IMctsEngine(Protocol):
     Contract for the MCTS execution engine.
     Single Responsibility: Manage the tree search and execution state transitions.
     """
-    def step(self, current_node: MctsNode) -> List[MctsNode]:
+    def step(self, current_node: MctsNode, goal: GoalContract) -> List[MctsNode]:
         """
         Execute one step of the current node (e.g., call LLM, run tools).
-        Returns new child nodes.
+        Returns new child nodes. The 'goal' acts as the evaluation anchor.
         """
         ...
 

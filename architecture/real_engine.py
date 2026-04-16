@@ -8,35 +8,25 @@ import logging
 import concurrent.futures
 from typing import List, Dict, Any
 
-from .contracts import IMctsEngine, MctsNode, NodeStatus
+from .contracts import IMctsEngine, MctsNode, NodeStatus, GoalContract, IEvaluator
 
 # Import Hermes agent's real LLM client and tool definitions
 from agent.auxiliary_client import call_llm
 from model_tools import get_tool_definitions, handle_function_call
 
-# Import Subagent architecture to act as our Critic/Verifier
-from tools.delegate_tool import _build_child_agent, _run_single_child
-
 logger = logging.getLogger(__name__)
 
-
 class RealMctsEngine(IMctsEngine):
-    def __init__(self, temperature: float = 0.7, branching_factor: int = 2):
+    def __init__(self, evaluator: IEvaluator, temperature: float = 0.7, branching_factor: int = 2):
+        self.evaluator = evaluator
         self.temperature = temperature
         self.branching_factor = branching_factor
         self.tools = get_tool_definitions(quiet_mode=True)
-        # We need a parent agent context to spawn subagents.
-        # For this MVP, we create a lightweight dummy or use the config directly.
-        from run_agent import AIAgent
 
-        self.parent_agent = AIAgent(
-            quiet_mode=True, skip_context_files=True, skip_memory=True
-        )
-
-    def step(self, current_node: MctsNode) -> List[MctsNode]:
+    def step(self, current_node: MctsNode, goal: GoalContract) -> List[MctsNode]:
         """
         Expands the current node by calling the LLM multiple times (branching).
-        Then uses Hermes subagents as a Critic to score each branch.
+        Then uses the injected Evaluator to score each branch.
         """
         logger.info(
             f"MCTS Engine expanding node {current_node.id} with b={self.branching_factor}..."
@@ -152,138 +142,15 @@ class RealMctsEngine(IMctsEngine):
             )
             child_nodes.append(node)
 
-        # Phase 3: Evaluation (Critic) using Hermes Subagents
-        # For each child node, we spawn a restricted subagent to evaluate its outcome.
-        self._evaluate_nodes_with_subagents(child_nodes, current_node.history)
+        # Phase 3: Evaluation (Critic) using injected Evaluator
+        # For each child node, we use the evaluator to score its outcome against the GoalContract.
+        print(f"\n[验证器] 正在对 {len(child_nodes)} 个探索分支进行过程打分...")
+        for node in child_nodes:
+            score = self.evaluator.evaluate_step(node, goal)
+            node.score = score
+            print(f"  └─ 分支 {node.id} 得分: {score}")
 
         return child_nodes
-
-    def _evaluate_nodes_with_subagents(
-        self, nodes: List[MctsNode], original_history: List[Dict[str, Any]]
-    ):
-        """
-        Uses Hermes's native delegate_task logic to spawn parallel critic agents.
-        Each critic looks at the action taken by a branch and scores it 0.0 - 1.0.
-        """
-        print(
-            f"\n[验证器] 正在拉起 {len(nodes)} 个子智能体 (Subagents) 对探索分支进行打分..."
-        )
-
-        # Extract the original goal from the very first message
-        goal_msg = next(
-            (m["content"] for m in original_history if m["role"] == "user"),
-            "Unknown goal",
-        )
-
-        def evaluate_single_node(idx, node):
-            # What did this branch actually do?
-            action_desc = "No tools called. " + node.history[-1].get("content", "")
-            outcome_desc = ""
-
-            if node.proposed_tool_calls:
-                action_desc = (
-                    f"Called tools: {[c['name'] for c in node.proposed_tool_calls]}"
-                )
-                # The last message in history is the tool result
-                outcome_desc = (
-                    f"Tool result: {node.history[-1].get('content', '')[:500]}..."
-                )
-
-            critic_goal = (
-                "您是一位严格的评估者/批评者。您的职责是针对用户原始目标，对 AI 提出的行动进行评分。\n"
-                "【格式要求】您必须，且只能输出一个合法的 JSON 对象，不要输出任何额外的解释或 Markdown 格式（不要使用 ```json 包裹）。\n"
-                "JSON 对象必须恰好包含两个键：\n"
-                "- 'score': 一个浮点数，范围从 0.0 到 1.0之间。\n"
-                "- 'reason': 一个简单的句子，解释为什么给定的评分是这样的。\n"
-                "示例输出:\n"
-                '{"score": 0.8, "reason": "行动直接且准确地回答了用户关于Vue3作者的问题。"}\n\n'
-                f"User's Goal: {goal_msg}\n"
-                f"AI's Action: {action_desc}\n"
-                f"Action Outcome: {outcome_desc}\n"
-            )
-
-            # Build a subagent with NO tools (pure reasoning critic)
-            child = _build_child_agent(
-                task_index=idx,
-                goal=critic_goal,
-                context=None,
-                toolsets=[],  # Restricted: Critic cannot execute tools
-                model=None,
-                max_iterations=1,
-                parent_agent=self.parent_agent,
-            )
-
-            result_dict = _run_single_child(
-                task_index=idx,
-                goal=critic_goal,
-                child=child,
-                parent_agent=self.parent_agent,
-            )
-
-            # Parse the critic's JSON response
-            # Note: _run_single_child returns a dict with 'messages' containing the conversation
-            messages = result_dict.get("messages", [])
-            raw_response = ""
-            for msg in reversed(messages):
-                if msg.get("role") == "assistant":
-                    raw_response = msg.get("content", "")
-                    break
-
-            if not raw_response:
-                raw_response = result_dict.get("summary", "")
-            if not raw_response:
-                raw_response = result_dict.get("result", "{}")
-
-            score = 0.5  # Default fallback
-            reason = "No reason provided"
-            
-            # If the API returned a 400 error or similar (e.g. rate limit, bad request due to context format)
-            # Or if we genuinely failed to get any response text
-            if not raw_response or "error" in str(result_dict).lower() and not raw_response:
-                print(f"  └─ 分支 {idx+1} 验证器子智能体 API 调用失败或无返回。")
-                print(f"     [调试信息] result_dict: {result_dict}")
-                node.score = score
-                return node
-
-            try:
-                import re
-
-                # Extract JSON using regex in case the LLM ignored our "no markdown" instruction
-                json_match = re.search(r"\{[\s\S]*\}", raw_response)
-                if json_match:
-                    json_str = json_match.group(0)
-                    parsed = json.loads(json_str)
-                    score = float(parsed.get("score", 0.5))
-                    reason = parsed.get("reason", "No reason provided")
-                    print(f"  └─ 分支 {idx+1} 得分: {score} (理由: {reason})")
-                else:
-                    # Fallback: Try to parse score from text like "Score: 3/10" or "score: 0.8"
-                    score_match = re.search(r"(?i)score\s*[:=]\s*([0-9]*\.?[0-9]+)(?:\s*/\s*10)?", raw_response)
-                    if score_match:
-                        val = float(score_match.group(1))
-                        # If the LLM returned out of 10 instead of 0.0-1.0
-                        if val > 1.0:
-                            val = val / 10.0
-                        score = min(1.0, max(0.0, val))
-                        reason = "Score extracted via fallback regex from natural language."
-                        print(f"  └─ 分支 {idx+1} 得分: {score} (后备解析: {reason})")
-                    else:
-                        raise ValueError("No JSON object found in response and fallback regex failed")
-            except Exception as e:
-                print(
-                    f"  └─ 分支 {idx+1} 打分解析失败，默认给 0.5 分。原始回复: {raw_response[:100].replace(chr(10), ' ')}"
-                )
-
-            node.score = score
-            return node
-
-        # Run critics in parallel using Hermes's built-in subagent threading approach
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(nodes)) as executor:
-            futures = [
-                executor.submit(evaluate_single_node, i, node)
-                for i, node in enumerate(nodes)
-            ]
-            concurrent.futures.wait(futures)
 
     def prune_and_redirect(self, node: MctsNode, feedback: str) -> None:
         """
