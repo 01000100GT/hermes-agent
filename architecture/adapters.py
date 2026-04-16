@@ -29,7 +29,7 @@ class SubagentEvaluatorAdapter(IEvaluator):
             from run_agent import AIAgent
 
             self.parent_agent = AIAgent(
-                quiet_mode=True, skip_context_files=True, skip_memory=True
+                quiet_mode=True, skip_context_files=True, skip_memory=False
             )
         else:
             self.parent_agent = parent_agent

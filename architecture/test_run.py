@@ -87,11 +87,16 @@ def run_simulation():
 
     print_header("Starting MCTS + HITL Simulation")
 
+    # 1. Initialize Centralized AI Agent
+    # This agent will manage personal memory, skills, and identity.
+    from run_agent import AIAgent
+    agent = AIAgent(quiet_mode=True, skip_context_files=False, skip_memory=False)
+
     # 1. Initialize Dependency Injection
     # We set branching_factor=2 to generate two different thoughts and let the Critic evaluate them
     elicitor = MacCliElicitorAdapter()
-    evaluator = SubagentEvaluatorAdapter()
-    engine = RealMctsEngine(evaluator=evaluator, branching_factor=2)
+    evaluator = SubagentEvaluatorAdapter(parent_agent=agent)
+    engine = RealMctsEngine(agent=agent, evaluator=evaluator, branching_factor=2)
     harness = DefaultHarnessMonitor()
     hitl = MacCliHitlAdapter()
 

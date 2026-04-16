@@ -17,11 +17,12 @@ from model_tools import get_tool_definitions, handle_function_call
 logger = logging.getLogger(__name__)
 
 class RealMctsEngine(IMctsEngine):
-    def __init__(self, evaluator: IEvaluator, temperature: float = 0.7, branching_factor: int = 2):
-        self.evaluator = evaluator
+    def __init__(self, agent, evaluator=None, temperature: float = 0.7, branching_factor: int = 2):
+        self.agent = agent
+        self.evaluator = evaluator or (agent.evaluator if hasattr(agent, 'evaluator') else None)
         self.temperature = temperature
         self.branching_factor = branching_factor
-        self.tools = get_tool_definitions(quiet_mode=True)
+        self.tools = agent.tools
 
     def step(self, current_node: MctsNode, goal: GoalContract) -> List[MctsNode]:
         """
@@ -32,9 +33,14 @@ class RealMctsEngine(IMctsEngine):
             f"MCTS Engine expanding node {current_node.id} with b={self.branching_factor}..."
         )
 
+        # Build the full system prompt from the agent's core logic
+        # (includes Identity, Memory blocks, Skill manifests, and Guidance prompts)
+        system_prompt = self.agent._build_system_prompt()
+        base_messages = [{"role": "system", "content": system_prompt}]
+        full_history = base_messages + current_node.history
+
         candidates = []
         # Phase 1: Expansion (Generate N candidate actions)
-        # In a real high-perf system, this should be async/parallel.
         for i in range(self.branching_factor):
             try:
                 print(
@@ -42,7 +48,7 @@ class RealMctsEngine(IMctsEngine):
                 )
                 response = call_llm(
                     task="mcts_step",
-                    messages=current_node.history,
+                    messages=full_history,
                     tools=self.tools,
                     # We use a higher temperature for branches after the first one to encourage diversity
                     temperature=(
