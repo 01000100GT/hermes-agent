@@ -9,7 +9,7 @@ model:
   # Default model to use (can be overridden with --model flag)
   # Both "default" and "model" work as the key name here.
   # default: "anthropic/claude-opus-4.6"
-  default: "Qwen3.5-27B.Q4_K_M.gguf"  
+  default: "Qwen/Qwen3-8B"  
 
   # Inference provider selection:
   #   "auto"         - Auto-detect from credentials (default)
@@ -41,9 +41,9 @@ model:
 
   providers:
     customllamacpp:
-      api: "http://103.81.48.25:12280/v1"
+      api: "https://api.siliconflow.cn/v1"
       key_env: "MY_CUSTOM_API_KEY"
-      default_model: "Qwen3.5-27B.Q4_K_M.gguf"
+      default_model: "Qwen/Qwen3-8B"
   #   For Ollama Cloud (https://ollama.com/pricing):
   #     provider: "custom"
   #     base_url: "https://ollama.com/v1"
@@ -78,9 +78,9 @@ model:
   # max_tokens: 8192
 custom_providers:  
   - name: "customllamacpp"  
-    base_url: "http://103.81.48.25:12280/v1"  
+    base_url: "https://api.siliconflow.cn/v1"  
     key_env: "MY_CUSTOM_API_KEY"  
-    model: "Qwen3.5-27B.Q4_K_M.gguf"
+    model: "Qwen/Qwen3-8B"
 # =============================================================================
 # OpenRouter Provider Routing (only applies when using OpenRouter)
 # =============================================================================
