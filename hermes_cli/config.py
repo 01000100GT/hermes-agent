@@ -700,6 +700,10 @@ DEFAULT_CONFIG = {
         # Python tries AAAA records first and hangs for the full TCP timeout
         # before falling back to IPv4.  Set to true to skip IPv6 entirely.
         "force_ipv4": False,
+        # Allow navigating to "Fake IP" ranges (198.18.0.0/15) often used by
+        # local proxy tools like Clash or Surge.  When true, these ranges
+        # are excluded from private-network SSRF blocks.
+        "allow_fake_ip_ranges": True,
     },
 
     # Config schema version - bump this when adding new required fields

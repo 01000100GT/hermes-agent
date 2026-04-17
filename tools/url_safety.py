@@ -19,6 +19,7 @@ Limitations (documented, not fixable at pre-flight level):
 import ipaddress
 import logging
 import socket
+from typing import Union
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -35,9 +36,17 @@ _BLOCKED_HOSTNAMES = frozenset({
 # VPNs, and some cloud internal networks.
 _CGNAT_NETWORK = ipaddress.ip_network("100.64.0.0/10")
 
+# 198.18.0.0/15 (Network Interconnect Device Benchmark Testing, RFC 2544)
+# Used as a "Fake IP" pool by local proxy tools like Clash and Surge.
+# Standard ipaddress.is_private returns True for this range.
+_FAKE_IP_NETWORK = ipaddress.ip_network("198.18.0.0/15")
 
-def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+
+def _is_blocked_ip(ip: Union[ipaddress.IPv4Address, ipaddress.IPv6Address], allow_fake_ip: bool = False) -> bool:
     """Return True if the IP should be blocked for SSRF protection."""
+    if allow_fake_ip and ip in _FAKE_IP_NETWORK:
+        return False
+
     if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
         return True
     if ip.is_multicast or ip.is_unspecified:
@@ -54,6 +63,14 @@ def is_safe_url(url: str) -> bool:
     Resolves the hostname to an IP and checks against private ranges.
     Fails closed: DNS errors and unexpected exceptions block the request.
     """
+    try:
+        from hermes_cli.config import load_config
+        config = load_config()
+        allow_fake_ip = config.get("network", {}).get("allow_fake_ip_ranges", True)
+    except Exception:
+        # Fallback to safe default if config loading fails
+        allow_fake_ip = False
+
     try:
         parsed = urlparse(url)
         hostname = (parsed.hostname or "").strip().lower()
@@ -81,11 +98,11 @@ def is_safe_url(url: str) -> bool:
             except ValueError:
                 continue
 
-            if _is_blocked_ip(ip):
-                logger.warning(
-                    "Blocked request to private/internal address: %s -> %s",
-                    hostname, ip_str,
-                )
+            if _is_blocked_ip(ip, allow_fake_ip=allow_fake_ip):
+                msg = f"Blocked request to private/internal address: {hostname} -> {ip_str}"
+                if ip in _FAKE_IP_NETWORK:
+                    msg += " (Detected Fake-IP range 198.18.0.0/15. You can allow this in config.yaml: network.allow_fake_ip_ranges)"
+                logger.warning(msg)
                 return False
 
         return True
