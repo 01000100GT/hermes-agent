@@ -100,8 +100,8 @@ class HermesMctsWorkflow:
             score=1.0,
             status=NodeStatus.PENDING,
         )
-
-        max_iterations = 1
+        # 最大次数 10 sss
+        max_iterations = 10
         iteration = 0
 
         while current_node.status not in (NodeStatus.COMPLETED, NodeStatus.PRUNED):
@@ -140,7 +140,7 @@ class HermesMctsWorkflow:
                     logger.info("Human approved execution to continue. Extending max_iterations.")
                     # 如果人类觉得没问题，再给 20 次机会
                     # max_iterations += 20
-                    max_iterations += 1  # 测试期先多给1次机会 sss
+                    max_iterations += 20  # 测试期先多给1次机会 sss
                     # 关键修复：既然人类批准了“超出步数限制”的继续，也意味着认可当前节点，重置分数防二次拦截
                     current_node.score = 1.0
                     continue
@@ -201,5 +201,19 @@ class HermesMctsWorkflow:
             # For this draft, we simply pick the child with the highest score to continue.
             best_child = max(child_nodes, key=lambda n: n.score)
             current_node = best_child
+
+        # --- POST-LOOP: Final Validation ---
+        if current_node.status == NodeStatus.COMPLETED and current_node.score < 0.6:
+            logger.warning(f"Task marked COMPLETED but final score is low ({current_node.score:.2f}). Triggering sanity check.")
+            reason = f"任务虽然宣称完成，但评估得分较低 ({current_node.score:.2f})，可能存在质量问题或未真正写盘。"
+            decision = self._hitl.request_decision(current_node, reason)
+            
+            if decision == HumanDecision.ABORT:
+                return None
+            elif decision in (HumanDecision.PRUNE, HumanDecision.OVERRIDE, HumanDecision.APPROVE):
+                # If human approved it anyway, or provided info, we might want to resume or return.
+                # For simplicity in this logic, we return the node if approved, 
+                # or the human could have steered it back into the loop via status change elsewhere.
+                pass
 
         return current_node

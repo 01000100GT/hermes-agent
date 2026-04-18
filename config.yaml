@@ -9,7 +9,7 @@ model:
   # Default model to use (can be overridden with --model flag)
   # Both "default" and "model" work as the key name here.
   # default: "anthropic/claude-opus-4.6"
-  default: "Qwen3.5-27B.Q4_K_M.gguf"  
+  default: "qwen3635ba3budq5km"
 
   # Inference provider selection:
   #   "auto"         - Auto-detect from credentials (default)
@@ -43,7 +43,7 @@ model:
     customllamacpp:
       api: "http://103.81.48.25:12280/v1"
       key_env: "MY_CUSTOM_API_KEY"
-      default_model: "Qwen3.5-27B.Q4_K_M.gguf"
+      default_model: "qwen3635ba3budq5km"
   #   For Ollama Cloud (https://ollama.com/pricing):
   #     provider: "custom"
   #     base_url: "https://ollama.com/v1"
@@ -51,12 +51,12 @@ model:
   #   points to ollama.com.
   #
   # Can also be overridden with --provider flag or HERMES_INFERENCE_PROVIDER env var.
-  # provider: "auto" 
-  provider: "customllamacpp"  
-  context_length: 131072  
+  # provider: "auto"
+  provider: "customllamacpp"
+  context_length: 131072
   # API configuration (falls back to OPENROUTER_API_KEY env var)
   # api_key: "your-key-here"  # Uncomment to set here instead of .env
-  # base_url: "https://openrouter.ai/api/v1" 
+  # base_url: "https://openrouter.ai/api/v1"
 
   # ── Token limits — two settings, easy to confuse ──────────────────────────
   #
@@ -76,11 +76,11 @@ model:
   #   Set only if you want to deliberately limit individual response length.
   #
   # max_tokens: 8192
-custom_providers:  
-  - name: "customllamacpp"  
-    base_url: "http://103.81.48.25:12280/v1"  
-    key_env: "MY_CUSTOM_API_KEY"  
-    model: "Qwen3.5-27B.Q4_K_M.gguf"
+custom_providers:
+  - name: "customllamacpp"
+    base_url: "http://103.81.48.25:12280/v1"
+    key_env: "MY_CUSTOM_API_KEY"
+    model: "qwen3635ba3budq5km"
 # =============================================================================
 # OpenRouter Provider Routing (only applies when using OpenRouter)
 # =============================================================================

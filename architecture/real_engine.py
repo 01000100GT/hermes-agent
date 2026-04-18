@@ -104,6 +104,10 @@ class RealMctsEngine(IMctsEngine):
                     }
                     for tc in message.tool_calls
                 ]
+            # 消息合规性校验：确保 assistant 消息不为空 (协议要求必须有 content 或 tool_calls)
+            if not assistant_msg.get("content") and not assistant_msg.get("tool_calls"):
+                assistant_msg["content"] = "(AI failed to generate a response, please try another path)"
+            
             new_history.append(assistant_msg)
 
             # Execute tools to see the real outcome for this branch
@@ -136,7 +140,16 @@ class RealMctsEngine(IMctsEngine):
                         }
                     )
 
-            status = NodeStatus.PENDING if proposed_tool_calls else NodeStatus.COMPLETED
+            # 状态判定优化：
+            # 1. 如果有拟执行的工具，状态必为 PENDING
+            # 2. 如果没有工具调用且内容为空，说明 AI “卡壳”了，设为 PENDING (后续会被低分拦截)
+            # 3. 只有当没有工具调用且内容不为空时，才初步认为可能 COMPLETED (后续由 Evaluator 确证)
+            if proposed_tool_calls:
+                status = NodeStatus.PENDING
+            elif not content.strip():
+                status = NodeStatus.PENDING  # 空回复不代表完成
+            else:
+                status = NodeStatus.COMPLETED
 
             node = MctsNode(
                 id=f"{current_node.id}_child_{idx+1}",
@@ -154,7 +167,7 @@ class RealMctsEngine(IMctsEngine):
         for node in child_nodes:
             score = self.evaluator.evaluate_step(node, goal)
             node.score = score
-            print(f"  └─ 分支 {node.id} 得分: {score}")
+            print(f"  [Validator] Node {node.id} score: {score:.2f}")
 
         return child_nodes
 

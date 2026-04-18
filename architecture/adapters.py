@@ -76,9 +76,10 @@ class SubagentEvaluatorAdapter(IEvaluator):
                 context=None,
                 toolsets=[],
                 model=None,
-                max_iterations=1,
+                max_iterations=2,
                 parent_agent=self.parent_agent,
             )
+            print(f"  [Critic] Evaluating node {node.id}...")
             result_dict = _run_single_child(
                 task_index=0,
                 goal=critic_goal,
