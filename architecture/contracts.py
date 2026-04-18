@@ -5,7 +5,7 @@ These protocols define the boundaries for the new MCTS engine,
 Harness (guardrails), and Human-In-The-Loop (HITL) interventions.
 """
 
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Dict, List, Optional, Protocol, Tuple
 from enum import Enum
 from dataclasses import dataclass
 
@@ -44,6 +44,7 @@ class MctsNode:
     proposed_tool_calls: List[Dict[str, Any]]
     score: float
     status: NodeStatus
+    critic_reason: Optional[str] = None
 
 
 class IRequirementElicitor(Protocol):
@@ -76,8 +77,8 @@ class IEvaluator(Protocol):
     Contract for node evaluation.
     Single Responsibility: Evaluate the progress of a node toward the goal, providing a score and feedback.
     """
-    def evaluate_step(self, node: MctsNode, goal: GoalContract) -> float:
-        """Evaluate an intermediate step, returning a score between 0.0 and 1.0."""
+    def evaluate_step(self, node: MctsNode, goal: GoalContract) -> Tuple[float, str]:
+        """Evaluate an intermediate step, returning a tuple of (score, reason)."""
         ...
         
     def check_acceptance(self, node: MctsNode, goal: GoalContract) -> bool:

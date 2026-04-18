@@ -5,7 +5,7 @@ Provides concrete implementations for the architecture contracts.
 
 import sys
 import time
-from typing import Optional
+from typing import Optional, Tuple
 
 from .contracts import (
     IHarnessMonitor,
@@ -34,7 +34,7 @@ class SubagentEvaluatorAdapter(IEvaluator):
         else:
             self.parent_agent = parent_agent
 
-    def evaluate_step(self, node: MctsNode, goal: GoalContract) -> float:
+    def evaluate_step(self, node: MctsNode, goal: GoalContract) -> Tuple[float, str]:
         import json
         import re
         from tools.delegate_tool import _build_child_agent, _run_single_child
@@ -104,17 +104,20 @@ class SubagentEvaluatorAdapter(IEvaluator):
             json_match = re.search(r"\{[\s\S]*\}", raw_response)
             if json_match:
                 parsed = json.loads(json_match.group(0))
-                return float(parsed.get("score", 0.5))
+                score = float(parsed.get("score", 0.5))
+                reason = parsed.get("reason", "No reason provided")
+                return score, reason
             else:
                 score_match = re.search(
                     r"(?i)score\s*[:=]\s*([0-9]*\.?[0-9]+)", raw_response
                 )
                 if score_match:
                     val = float(score_match.group(1))
-                    return min(1.0, max(0.0, val / 10.0 if val > 1.0 else val))
-                return 0.5
+                    score = min(1.0, max(0.0, val / 10.0 if val > 1.0 else val))
+                    return score, "Score extracted from raw response (no detail)"
+                return 0.5, "Could not parse score or reason from response"
         except Exception as e:
-            return 0.5
+            return 0.5, f"Evaluation error: {str(e)}"
 
     def check_acceptance(self, node: MctsNode, goal: GoalContract) -> bool:
         # Simplistic implementation for now; could also call LLM to verify

@@ -57,9 +57,20 @@ class RealMctsEngine(IMctsEngine):
                 )
                 
                 msg = response.choices[0].message
-                print(f"\n[AI 回复] 分支 {i+1} 返回结果:\n  - 文本内容: {msg.content}")
+                branch_text = msg.content or ""
+                print(f"\n[AI 回复] 分支 {i+1} 返回结果:")
+                if branch_text.strip():
+                    print(f"  - 文本内容: {branch_text}")
+                
                 if hasattr(msg, "tool_calls") and msg.tool_calls:
-                    print(f"  - 工具调用: {[tc.function.name for tc in msg.tool_calls]}")
+                    for tc in msg.tool_calls:
+                        try:
+                            args_short = json.dumps(json.loads(tc.function.arguments))
+                            if len(args_short) > 100:
+                                args_short = args_short[:97] + "..."
+                            print(f"  - 工具调用: {tc.function.name}({args_short})")
+                        except:
+                            print(f"  - 工具调用: {tc.function.name}({tc.function.arguments})")
                     
                 candidates.append(msg)
             except Exception as e:
@@ -165,9 +176,11 @@ class RealMctsEngine(IMctsEngine):
         # For each child node, we use the evaluator to score its outcome against the GoalContract.
         print(f"\n[验证器] 正在对 {len(child_nodes)} 个探索分支进行过程打分...")
         for node in child_nodes:
-            score = self.evaluator.evaluate_step(node, goal)
+            score, reason = self.evaluator.evaluate_step(node, goal)
             node.score = score
+            node.critic_reason = reason
             print(f"  [Validator] Node {node.id} score: {score:.2f}")
+            print(f"  [Critic] Reason: {reason}")
 
         return child_nodes
 
