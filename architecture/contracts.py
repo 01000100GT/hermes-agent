@@ -133,3 +133,25 @@ class IMctsEngine(Protocol):
     def diagnose_trajectory(self, node: MctsNode) -> str:
         """Diagnose why the agent is stuck and provide a human-readable summary and advice."""
         ...
+
+class ILlmProvider(Protocol):
+    """
+    Contract for LLM communication.
+    Single Responsibility: Send prompts to an LLM and receive parsed responses (text + tool calls).
+    """
+    def generate(self, messages: List[Dict[str, Any]], tools: List[Dict[str, Any]], temperature: float) -> Any:
+        """
+        Generate a response from the LLM. 
+        Returns an object containing content and tool_calls.
+        """
+        ...
+
+class IToolExecutor(Protocol):
+    """
+    Contract for tool execution.
+    Single Responsibility: Execute a tool by name with arguments and return the result string.
+    """
+    def execute(self, name: str, args: Dict[str, Any]) -> str:
+        """Execute the requested tool and return the output."""
+        ...
+

@@ -10,8 +10,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from architecture.contracts import MctsNode, NodeStatus
 from architecture.workflow import HermesMctsWorkflow
-from architecture.adapters import DefaultHarnessMonitor, MacCliHitlAdapter, MacCliElicitorAdapter, SubagentEvaluatorAdapter
+from architecture.harness_monitor import DefaultHarnessMonitor
+from architecture.cli_hitl_adapter import MacCliHitlAdapter
+from architecture.cli_elicitor_adapter import MacCliElicitorAdapter
+from architecture.evaluator_adapter import SubagentEvaluatorAdapter
 from architecture.real_engine import RealMctsEngine
+from architecture.llm_provider_adapter import HermesLlmProvider
+from architecture.tool_executor_adapter import HermesToolExecutor
 
 try:
     from rich.console import Console
@@ -96,7 +101,15 @@ def run_simulation():
     # We set branching_factor=2 to generate two different thoughts and let the Critic evaluate them
     elicitor = MacCliElicitorAdapter()
     evaluator = SubagentEvaluatorAdapter(parent_agent=agent)
-    engine = RealMctsEngine(agent=agent, evaluator=evaluator, branching_factor=2)
+    llm_provider = HermesLlmProvider()
+    tool_executor = HermesToolExecutor()
+    engine = RealMctsEngine(
+        agent=agent, 
+        evaluator=evaluator, 
+        llm_provider=llm_provider, 
+        tool_executor=tool_executor, 
+        branching_factor=2
+    )
     harness = DefaultHarnessMonitor()
     hitl = MacCliHitlAdapter()
 

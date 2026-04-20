@@ -9,18 +9,16 @@ import logging
 import concurrent.futures
 from typing import List, Dict, Any, Optional
 
-from .contracts import IMctsEngine, MctsNode, NodeStatus, GoalContract, IEvaluator
-
-# Import Hermes agent's real LLM client and tool definitions
-from agent.auxiliary_client import call_llm
-from model_tools import get_tool_definitions, handle_function_call
+from .contracts import IMctsEngine, MctsNode, NodeStatus, GoalContract, IEvaluator, ILlmProvider, IToolExecutor
 
 logger = logging.getLogger(__name__)
 
 class RealMctsEngine(IMctsEngine):
-    def __init__(self, agent, evaluator=None, temperature: float = 0.7, branching_factor: int = 2, exploration_constant: float = 1.414):
+    def __init__(self, agent, evaluator=None, llm_provider: ILlmProvider = None, tool_executor: IToolExecutor = None, temperature: float = 0.7, branching_factor: int = 2, exploration_constant: float = 1.414):
         self.agent = agent
         self.evaluator = evaluator or (agent.evaluator if hasattr(agent, 'evaluator') else None)
+        self.llm_provider = llm_provider
+        self.tool_executor = tool_executor
         self.temperature = temperature
         self.branching_factor = branching_factor
         self.tools = agent.tools
@@ -54,16 +52,24 @@ class RealMctsEngine(IMctsEngine):
                 print(
                     f"\n[AI 思考中] 正在向 LLM 发送请求 (生成分支 {i+1}/{self.branching_factor})..."
                 )
-                response = call_llm(
-                    task="mcts_step",
-                    messages=cached_history,
-                    tools=self.tools,
-                    temperature=(
-                        self.temperature if i == 0 else min(1.0, self.temperature + 0.2)
-                    ),
-                )
+                if self.llm_provider:
+                    msg = self.llm_provider.generate(
+                        messages=cached_history,
+                        tools=self.tools,
+                        temperature=(self.temperature if i == 0 else min(1.0, self.temperature + 0.2))
+                    )
+                else:
+                    from agent.auxiliary_client import call_llm
+                    response = call_llm(
+                        task="mcts_step",
+                        messages=cached_history,
+                        tools=self.tools,
+                        temperature=(
+                            self.temperature if i == 0 else min(1.0, self.temperature + 0.2)
+                        ),
+                    )
+                    msg = response.choices[0].message
                 
-                msg = response.choices[0].message
                 branch_text = msg.content or ""
                 print(f"\n[AI 回复] 分支 {i+1} 返回结果:")
                 if branch_text.strip():
@@ -137,13 +143,17 @@ class RealMctsEngine(IMctsEngine):
                         f"[分支 {idx+1} 执行工具] {tool_name}({json.dumps(tool_args)})"
                     )
                     try:
-                        raw_result = handle_function_call(
-                            function_name=tool_name,
-                            function_args=tool_args,
-                            task_id=f"mcts_branch_{idx}",
-                            session_id="mcts_session",
-                        )
-                        final_result = raw_result
+                        if self.tool_executor:
+                            final_result = self.tool_executor.execute(tool_name, tool_args)
+                        else:
+                            from model_tools import handle_function_call
+                            raw_result = handle_function_call(
+                                function_name=tool_name,
+                                function_args=tool_args,
+                                task_id=f"mcts_branch_{idx}",
+                                session_id="mcts_session",
+                            )
+                            final_result = raw_result
                     except Exception as tool_e:
                         final_result = json.dumps(
                             {"status": "error", "message": str(tool_e)}
@@ -279,14 +289,23 @@ class RealMctsEngine(IMctsEngine):
                 f"【最近执行历史】\n{history_text}"
             )
             
-            response = call_llm(
-                task="diagnose_trajectory",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3
-            )
+            if self.llm_provider:
+                response_msg = self.llm_provider.generate(
+                    messages=[{"role": "user", "content": prompt}],
+                    tools=[],
+                    temperature=0.3
+                )
+            else:
+                from agent.auxiliary_client import call_llm
+                response = call_llm(
+                    task="diagnose_trajectory",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3
+                )
+                response_msg = response.choices[0].message
             
             import re
-            raw_content = response.choices[0].message.content or ""
+            raw_content = response_msg.content or ""
             raw_content = re.sub(r'<think>[\s\S]*?</think>', '', raw_content).strip()
             
             return f"【诊断报告】\n{raw_content}"
