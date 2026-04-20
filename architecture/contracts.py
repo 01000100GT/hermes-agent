@@ -7,7 +7,7 @@ Harness (guardrails), and Human-In-The-Loop (HITL) interventions.
 
 from typing import Any, Dict, List, Optional, Protocol, Tuple
 from enum import Enum
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 class NodeStatus(Enum):
@@ -45,6 +45,16 @@ class MctsNode:
     score: float
     status: NodeStatus
     critic_reason: Optional[str] = None
+    
+    # --- MCTS specific fields ---
+    visit_count: int = 0
+    value: float = 0.0  # Cumulative value for backprop
+    children: List["MctsNode"] = field(default_factory=list)
+    parent: Optional["MctsNode"] = None
+
+    @property
+    def avg_value(self) -> float:
+        return self.value / self.visit_count if self.visit_count > 0 else 0.0
 
 
 class IRequirementElicitor(Protocol):
@@ -91,8 +101,8 @@ class IHumanIntervention(Protocol):
     Contract for Human-In-The-Loop interaction.
     Single Responsibility: Request and receive decisions from the human operator.
     """
-    def request_decision(self, node: MctsNode, reason: str) -> HumanDecision:
-        """Ask the human what to do with the suspended node."""
+    def request_decision(self, node: MctsNode, reason: str, candidates: Optional[List[MctsNode]] = None) -> HumanDecision:
+        """Ask the human what to do with the suspended node, optionally comparing with candidates."""
         ...
         
     def get_human_feedback(self) -> Optional[str]:

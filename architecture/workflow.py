@@ -100,17 +100,22 @@ class HermesMctsWorkflow:
             score=1.0,
             status=NodeStatus.PENDING,
         )
-        # 最大次数 10 sss
+        root_node = current_node
+        best_overall_node = root_node
         max_iterations = 10
         iteration = 0
-
-        while current_node.status not in (NodeStatus.COMPLETED, NodeStatus.PRUNED):
+        
+        while best_overall_node.status not in (NodeStatus.COMPLETED, NodeStatus.PRUNED):
+            # 1. Selection: Find the most promising leaf node in the entire tree
+            current_node = self._engine.select_next_node(root_node)
+            
             if iteration >= max_iterations:
                 logger.warning("Max iterations reached. Triggering diagnostic...")
                 reason = self._engine.diagnose_trajectory(current_node)
                 
-                # 当达到最大次数时，通过 HITL (Human-In-The-Loop) 询问人下一步的工作
-                decision = self._hitl.request_decision(current_node, reason)
+                # Fetch sibling candidates for context
+                candidates = current_node.parent.children if current_node.parent else []
+                decision = self._hitl.request_decision(current_node, reason, candidates=candidates)
 
                 if decision == HumanDecision.ABORT:
                     logger.error("Task aborted by human due to max iterations.")
@@ -118,43 +123,34 @@ class HermesMctsWorkflow:
                 elif decision == HumanDecision.PRUNE:
                     feedback = self._hitl.get_human_feedback() or ""
                     self._engine.prune_and_redirect(current_node, feedback)
-                    logger.info("Human provided steering feedback at max iterations. Resetting counter.")
-                    # 关键修改：Prune 会将节点状态改为 PRUNED。
-                    # 为了让 while 循环继续（因为我们要给 AI 新的机会），我们需要把状态改回 PENDING
-                    current_node.status = NodeStatus.PENDING
-                    # 关键修复：重置分数为 1.0，防止再次被低分护栏拦截！
-                    current_node.score = 1.0
-                    # 重置迭代计数器
+                    # Human steering counts as a "simulated failure" for this path
+                    self._engine.backpropagate(current_node, 0.0)
                     iteration = 0 
                     continue
                 elif decision == HumanDecision.OVERRIDE:
                     feedback = self._hitl.get_human_feedback() or ""
                     self._engine.apply_override(current_node, feedback)
-                    logger.info("Human provided override result at max iterations. Resetting counter.")
-                    # apply_override 本身已经把状态设为了 PENDING
-                    # 关键修复：重置分数为 1.0
-                    current_node.score = 1.0
+                    # Human override is a massive success signal
+                    self._engine.backpropagate(current_node, 1.0)
                     iteration = 0
                     continue
                 elif decision == HumanDecision.APPROVE:
                     logger.info("Human approved execution to continue. Extending max_iterations.")
-                    # 如果人类觉得没问题，再给 20 次机会
-                    # max_iterations += 20
-                    max_iterations += 20  # 测试期先多给1次机会 sss
-                    # 关键修复：既然人类批准了“超出步数限制”的继续，也意味着认可当前节点，重置分数防二次拦截
-                    current_node.score = 1.0
+                    max_iterations += 20
+                    self._engine.backpropagate(current_node, 1.0)
                     continue
                 else:
                     break
 
             iteration += 1
-            # 1. Guardrail Check (Harness Monitor)
+            # 2. Guardrail Check (Harness Monitor)
             if self._harness.check_thresholds(current_node):
                 reason = self._harness.get_suspend_reason()
                 logger.warning(f"Harness triggered: {reason}. Suspending for HITL.")
 
-                # 2. Human-In-The-Loop Intervention
-                decision = self._hitl.request_decision(current_node, reason)
+                # 3. Human-In-The-Loop Intervention
+                candidates = current_node.parent.children if current_node.parent else []
+                decision = self._hitl.request_decision(current_node, reason, candidates=candidates)
 
                 if decision == HumanDecision.ABORT:
                     logger.error("Task aborted by human.")
@@ -163,57 +159,35 @@ class HermesMctsWorkflow:
                 elif decision == HumanDecision.PRUNE:
                     feedback = self._hitl.get_human_feedback() or ""
                     self._engine.prune_and_redirect(current_node, feedback)
-                    logger.info("Human provided steering feedback. Re-evaluating...")
-                    # 关键修改：重置节点状态为 PENDING，防止外层 while 循环直接退出
-                    current_node.status = NodeStatus.PENDING
-                    # 关键修复：重置分数为 1.0，防止再次被低分护栏拦截！
-                    current_node.score = 1.0
-                    # In MCTS, after pruning/steering, we let the engine select the next best node
+                    # Human steering counts as a "simulated failure" for this path
+                    self._engine.backpropagate(current_node, 0.0)
                     continue
 
                 elif decision == HumanDecision.OVERRIDE:
                     feedback = self._hitl.get_human_feedback() or ""
                     self._engine.apply_override(current_node, feedback)
-                    logger.info("Human provided override result. Proceeding...")
-                    # In MCTS, after overriding, the node state is kept PENDING internally by apply_override
-                    current_node.status = NodeStatus.PENDING
-                    # 关键修复：重置分数为 1.0
-                    current_node.score = 1.0
+                    # Human override is a massive success signal
+                    self._engine.backpropagate(current_node, 1.0)
                     continue
 
                 elif decision == HumanDecision.APPROVE:
                     logger.info("Human approved execution. Proceeding.")
-                    # 关键修复：人类批准后，必须重置分数，否则下一次循环可能依然被分数拦截
-                    current_node.score = 1.0
+                    self._engine.backpropagate(current_node, 1.0)
 
-            # 3. AI Execution (MCTS Step)
-            # The engine expands the current node by proposing/executing the next actions.
-            # We pass the confirmed goal_contract down so the engine (and its evaluator)
-            # evaluate actions strictly against this "North Star".
+            # 4. AI Execution (MCTS Step: Expansion & Simulation)
             child_nodes = self._engine.step(current_node, goal_contract)
 
             if not child_nodes:
                 logger.info("No further steps generated. Marking as completed.")
                 current_node.status = NodeStatus.COMPLETED
+                best_overall_node = current_node
                 break
 
-            # 4. Selection
-            # For this draft, we simply pick the child with the highest score to continue.
-            best_child = max(child_nodes, key=lambda n: n.score)
-            current_node = best_child
+            # In true MCTS, we don't just pick one child. We expand the tree and 
+            # let the next loop iteration select the best leaf via UCB1.
+            # For simplicity in this conversational flow, we define the "best_overall_node"
+            # as the one the user would see if they stopped now.
+            best_overall_node = self._engine.select_next_node(root_node)
 
         # --- POST-LOOP: Final Validation ---
-        if current_node.status == NodeStatus.COMPLETED and current_node.score < 0.6:
-            logger.warning(f"Task marked COMPLETED but final score is low ({current_node.score:.2f}). Triggering sanity check.")
-            reason = f"任务虽然宣称完成，但评估得分较低 ({current_node.score:.2f})，可能存在质量问题或未真正写盘。"
-            decision = self._hitl.request_decision(current_node, reason)
-            
-            if decision == HumanDecision.ABORT:
-                return None
-            elif decision in (HumanDecision.PRUNE, HumanDecision.OVERRIDE, HumanDecision.APPROVE):
-                # If human approved it anyway, or provided info, we might want to resume or return.
-                # For simplicity in this logic, we return the node if approved, 
-                # or the human could have steered it back into the loop via status change elsewhere.
-                pass
-
-        return current_node
+        return best_overall_node

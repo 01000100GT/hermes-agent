@@ -3,10 +3,11 @@ Real MCTS engine implementation that calls the actual LLM API.
 Uses Hermes Agent's auxiliary_client and tool registry.
 """
 
+import math
 import json
 import logging
 import concurrent.futures
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from .contracts import IMctsEngine, MctsNode, NodeStatus, GoalContract, IEvaluator
 
@@ -17,12 +18,14 @@ from model_tools import get_tool_definitions, handle_function_call
 logger = logging.getLogger(__name__)
 
 class RealMctsEngine(IMctsEngine):
-    def __init__(self, agent, evaluator=None, temperature: float = 0.7, branching_factor: int = 2):
+    def __init__(self, agent, evaluator=None, temperature: float = 0.7, branching_factor: int = 2, exploration_constant: float = 1.414):
         self.agent = agent
         self.evaluator = evaluator or (agent.evaluator if hasattr(agent, 'evaluator') else None)
         self.temperature = temperature
         self.branching_factor = branching_factor
         self.tools = agent.tools
+        self.exploration_constant = exploration_constant
+        self.total_simulations = 0
 
     def step(self, current_node: MctsNode, goal: GoalContract) -> List[MctsNode]:
         """
@@ -34,10 +37,15 @@ class RealMctsEngine(IMctsEngine):
         )
 
         # Build the full system prompt from the agent's core logic
-        # (includes Identity, Memory blocks, Skill manifests, and Guidance prompts)
         system_prompt = self.agent._build_system_prompt()
+        
+        # Apply prompt caching for Anthropic if supported
+        from agent.prompt_caching import apply_anthropic_cache_control
         base_messages = [{"role": "system", "content": system_prompt}]
         full_history = base_messages + current_node.history
+        
+        # We cache the system prompt and the stable part of history
+        cached_history = apply_anthropic_cache_control(full_history)
 
         candidates = []
         # Phase 1: Expansion (Generate N candidate actions)
@@ -48,9 +56,8 @@ class RealMctsEngine(IMctsEngine):
                 )
                 response = call_llm(
                     task="mcts_step",
-                    messages=full_history,
+                    messages=cached_history,
                     tools=self.tools,
-                    # We use a higher temperature for branches after the first one to encourage diversity
                     temperature=(
                         self.temperature if i == 0 else min(1.0, self.temperature + 0.2)
                     ),
@@ -167,12 +174,13 @@ class RealMctsEngine(IMctsEngine):
                 parent_id=current_node.id,
                 history=new_history,
                 proposed_tool_calls=proposed_tool_calls,
-                score=0.0,  # Will be scored by Critic next
+                score=0.0,
                 status=status,
+                parent=current_node
             )
+            current_node.children.append(node)
             child_nodes.append(node)
 
-        # Phase 3: Evaluation (Critic) using injected Evaluator
         # For each child node, we use the evaluator to score its outcome against the GoalContract.
         print(f"\n[验证器] 正在对 {len(child_nodes)} 个探索分支进行过程打分...")
         for node in child_nodes:
@@ -181,8 +189,49 @@ class RealMctsEngine(IMctsEngine):
             node.critic_reason = reason
             print(f"  [Validator] Node {node.id} score: {score:.2f}")
             print(f"  [Critic] Reason: {reason}")
+            
+            # MCTS: Backpropagate the initial evaluation score
+            self.backpropagate(node, score)
 
         return child_nodes
+
+    def backpropagate(self, node: MctsNode, score: float) -> None:
+        """Updates the path from leaf to root with the evaluation score."""
+        curr = node
+        while curr:
+            curr.visit_count += 1
+            curr.value += score
+            curr = curr.parent
+        self.total_simulations += 1
+
+    def select_next_node(self, root: MctsNode) -> MctsNode:
+        """Selects the most promising leaf node using UCB1."""
+        curr = root
+        while curr.children:
+            # Pick child with highest UCB1 score
+            best_score = -1.0
+            best_child = None
+            
+            for child in curr.children:
+                if child.visit_count == 0:
+                    best_child = child
+                    break
+                
+                # UCB1 Formula: x_bar + C * sqrt(ln(N) / n)
+                exploitation = child.avg_value
+                exploration = self.exploration_constant * math.sqrt(
+                    math.log(self.total_simulations) / child.visit_count
+                )
+                ucb1 = exploitation + exploration
+                
+                if ucb1 > best_score:
+                    best_score = ucb1
+                    best_child = child
+            
+            if not best_child:
+                break
+            curr = best_child
+        return curr
 
     def prune_and_redirect(self, node: MctsNode, feedback: str) -> None:
         """

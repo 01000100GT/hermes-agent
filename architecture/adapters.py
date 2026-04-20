@@ -5,7 +5,7 @@ Provides concrete implementations for the architecture contracts.
 
 import sys
 import time
-from typing import Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Any
 
 from .contracts import (
     IHarnessMonitor,
@@ -104,8 +104,18 @@ class SubagentEvaluatorAdapter(IEvaluator):
             json_match = re.search(r"\{[\s\S]*\}", raw_response)
             if json_match:
                 parsed = json.loads(json_match.group(0))
-                score = float(parsed.get("score", 0.5))
+                llm_score = float(parsed.get("score", 0.5))
                 reason = parsed.get("reason", "No reason provided")
+                
+                # Hybrid Evaluation: Merge with deterministic checks
+                det_score, det_reason = self._run_deterministic_checks(node, goal)
+                if det_reason:
+                    # If we have a definitive deterministic signal, give it significant weight
+                    score = (llm_score * 0.4) + (det_score * 0.6)
+                    reason = f"{reason} | {det_reason}"
+                else:
+                    score = llm_score
+                    
                 return score, reason
             else:
                 score_match = re.search(
@@ -118,6 +128,29 @@ class SubagentEvaluatorAdapter(IEvaluator):
                 return 0.5, "Could not parse score or reason from response"
         except Exception as e:
             return 0.5, f"Evaluation error: {str(e)}"
+
+    def _run_deterministic_checks(self, node: MctsNode, goal: GoalContract) -> Tuple[float, str]:
+        """
+        Runs hardcoded checks (e.g., file existence, format validation) 
+        to supplement LLM evaluation.
+        """
+        import os
+        
+        # 1. Check for file creation if the request mentioned one
+        path_hint = None
+        for boundary in goal.clarified_boundaries:
+            if "/" in boundary or ".md" in boundary or ".txt" in boundary:
+                # Naive path extraction from boundary text
+                import re
+                match = re.search(r'(/[a-zA-Z0-9._/-]+)', boundary)
+                if match:
+                    path_hint = match.group(1)
+                    break
+        
+        if path_hint and os.path.exists(path_hint):
+            return 1.0, f"DETERMINISTIC: Verified file exists at {path_hint}"
+            
+        return 0.0, ""
 
     def check_acceptance(self, node: MctsNode, goal: GoalContract) -> bool:
         # Simplistic implementation for now; could also call LLM to verify
@@ -320,7 +353,7 @@ class MacCliHitlAdapter(IHumanIntervention):
     def __init__(self):
         self._last_feedback = None
 
-    def request_decision(self, node: MctsNode, reason: str) -> HumanDecision:
+    def request_decision(self, node: MctsNode, reason: str, candidates: Optional[List[MctsNode]] = None) -> HumanDecision:
         self._last_feedback = None
 
         # Ring terminal bell (Mac native behavior)
@@ -331,7 +364,29 @@ class MacCliHitlAdapter(IHumanIntervention):
             console.print("\n[bold red]⚠️  系统拦截执行[/bold red]")
             console.print(f"[yellow]原因：[/yellow] {reason}")
 
-            if node.proposed_tool_calls:
+            if candidates:
+                from rich.table import Table
+                table = Table(title="分支对比 (Top 3 Candidates)", show_header=True, header_style="bold magenta")
+                table.add_column("ID", style="dim", width=12)
+                table.add_column("得分", justify="center")
+                table.add_column("操作预览", width=40)
+                table.add_column("理由", width=30)
+
+                # Sort candidates by score and take top 3
+                sorted_candidates = sorted(candidates, key=lambda n: n.score, reverse=True)[:3]
+                for c in sorted_candidates:
+                    tool_desc = "None"
+                    if c.proposed_tool_calls:
+                        tool_desc = ", ".join([call.get("name", "") for call in c.proposed_tool_calls])
+                    
+                    table.add_row(
+                        c.id,
+                        f"{c.score:.2f}",
+                        tool_desc,
+                        c.critic_reason or "N/A"
+                    )
+                console.print(table)
+            elif node.proposed_tool_calls:
                 console.print("\n[cyan]拟执行操作：[/cyan]")
                 for call in node.proposed_tool_calls:
                     console.print(f"  - {call.get('name')}({call.get('args')})")
