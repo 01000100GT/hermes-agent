@@ -6,6 +6,7 @@ and generate targeted clarification questions.
 
 import sys
 from .contracts import IRequirementElicitor, GoalContract
+from .cli_utils import read_multiline_input
 
 try:
     from rich.console import Console
@@ -71,8 +72,8 @@ class MacCliElicitorAdapter(IRequirementElicitor):
             c1 = "Task completes without errors."
 
         if HAS_RICH:
-            ans1 = Prompt.ask(f"[yellow]Q1: {q1}[/yellow]")
-            ans2 = Prompt.ask(f"[yellow]Q2: {q2}[/yellow]")
+            ans1 = read_multiline_input(f"[yellow]Q1: {q1}[/yellow]")
+            ans2 = read_multiline_input(f"[yellow]Q2: {q2}[/yellow]")
 
             while True:
                 console.print("\n[bold green]📝  Draft Goal Contract[/bold green]")
@@ -115,8 +116,8 @@ class MacCliElicitorAdapter(IRequirementElicitor):
             print("\n🎯  Requirement Elicitation Phase")
             print(f"Original Request: {initial_request}")
 
-            ans1 = input(f"Q1: {q1}\nYour answer: ")
-            ans2 = input(f"Q2: {q2}\nYour answer: ")
+            ans1 = read_multiline_input(f"Q1: {q1}")
+            ans2 = read_multiline_input(f"Q2: {q2}")
 
             print("\n📝  Draft Goal Contract")
             boundaries = [b1, f"User clarification: {ans1}"]

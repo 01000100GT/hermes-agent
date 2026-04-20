@@ -7,6 +7,7 @@ import sys
 import os
 from typing import List, Optional
 from .contracts import IHumanIntervention, MctsNode, HumanDecision
+from .cli_utils import read_multiline_input
 
 try:
     from rich.console import Console
@@ -71,10 +72,10 @@ class MacCliHitlAdapter(IHumanIntervention):
             if choice == "1":
                 return HumanDecision.APPROVE
             elif choice == "2":
-                self._last_feedback = Prompt.ask("[yellow]Enter your hint for the AI[/yellow]")
+                self._last_feedback = read_multiline_input("[yellow]Enter your hint for the AI[/yellow]")
                 return HumanDecision.PRUNE
             elif choice == "3":
-                self._last_feedback = Prompt.ask("[blue]Enter the exact result/answer[/blue]")
+                self._last_feedback = read_multiline_input("[blue]Enter the exact result/answer[/blue]")
                 return HumanDecision.OVERRIDE
             else:
                 return HumanDecision.ABORT
@@ -98,10 +99,10 @@ class MacCliHitlAdapter(IHumanIntervention):
             if choice == "1":
                 return HumanDecision.APPROVE
             elif choice == "2":
-                self._last_feedback = input("Enter your hint for the AI: ")
+                self._last_feedback = read_multiline_input("Enter your hint for the AI: ")
                 return HumanDecision.PRUNE
             elif choice == "3":
-                self._last_feedback = input("Enter the exact result/answer: ")
+                self._last_feedback = read_multiline_input("Enter the exact result/answer: ")
                 return HumanDecision.OVERRIDE
             else:
                 return HumanDecision.ABORT
