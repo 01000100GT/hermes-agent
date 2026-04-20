@@ -56,18 +56,12 @@ class HermesMctsWorkflow:
         logger.info(f"Goal locked: {goal_contract.original_request}")
 
         # --- PHASE 2: MCTS Execution Loop ---
-        # Fetch the system environment information using Hermes's built-in prompt builder
-        try:
-            from agent.prompt_builder import build_environment_prompt
+        # Fetch the system environment information
+        import platform
+        import os
+        import datetime
 
-            env_prompt = build_environment_prompt()
-        except Exception as e:
-            logger.warning(f"Failed to load environment prompt: {e}")
-            import platform
-            import os
-            import datetime
-
-            env_prompt = f"Operating System: {platform.system()}\nWorking Directory: {os.getcwd()}\nDate: {datetime.datetime.now().strftime('%Y-%m-%d')}"
+        env_prompt = f"Operating System: {platform.system()}\nWorking Directory: {os.getcwd()}\nDate: {datetime.datetime.now().strftime('%Y-%m-%d')}"
 
         # Initialize the root node with the confirmed goal boundaries
         system_prompt = (
@@ -143,38 +137,49 @@ class HermesMctsWorkflow:
                     break
 
             iteration += 1
-            # 2. Guardrail Check (Harness Monitor)
-            if self._harness.check_thresholds(current_node):
-                reason = self._harness.get_suspend_reason()
-                logger.warning(f"Harness triggered: {reason}. Suspending for HITL.")
+            
+            # 2. Guardrail Check & Execution for PENDING actions
+            if current_node.status == NodeStatus.PENDING and current_node.proposed_tool_calls:
+                if self._harness.check_thresholds(current_node):
+                    reason = self._harness.get_suspend_reason()
+                    logger.warning(f"Harness triggered: {reason}. Suspending for HITL.")
 
-                # 3. Human-In-The-Loop Intervention
-                candidates = current_node.parent.children if current_node.parent else []
-                decision = self._hitl.request_decision(current_node, reason, candidates=candidates)
+                    # 3. Human-In-The-Loop Intervention
+                    candidates = current_node.parent.children if current_node.parent else []
+                    decision = self._hitl.request_decision(current_node, reason, candidates=candidates)
 
-                if decision == HumanDecision.ABORT:
-                    logger.error("Task aborted by human.")
-                    return None
+                    if decision == HumanDecision.ABORT:
+                        logger.error("Task aborted by human.")
+                        return None
 
-                elif decision == HumanDecision.PRUNE:
-                    feedback = self._hitl.get_human_feedback() or ""
-                    self._engine.prune_and_redirect(current_node, feedback)
-                    # Human steering counts as a "simulated failure" for this path
-                    self._engine.backpropagate(current_node, 0.0)
-                    continue
+                    elif decision == HumanDecision.PRUNE:
+                        feedback = self._hitl.get_human_feedback() or ""
+                        self._engine.prune_and_redirect(current_node, feedback)
+                        # Human steering counts as a "simulated failure" for this path
+                        self._engine.backpropagate(current_node, 0.0)
+                        best_overall_node = self._engine.select_next_node(root_node)
+                        continue
 
-                elif decision == HumanDecision.OVERRIDE:
-                    feedback = self._hitl.get_human_feedback() or ""
-                    self._engine.apply_override(current_node, feedback)
-                    # Human override is a massive success signal
-                    self._engine.backpropagate(current_node, 1.0)
-                    continue
+                    elif decision == HumanDecision.OVERRIDE:
+                        feedback = self._hitl.get_human_feedback() or ""
+                        self._engine.apply_override(current_node, feedback)
+                        # Human override is a massive success signal
+                        self._engine.backpropagate(current_node, 1.0)
+                        best_overall_node = self._engine.select_next_node(root_node)
+                        continue
 
-                elif decision == HumanDecision.APPROVE:
-                    logger.info("Human approved execution. Proceeding.")
-                    self._engine.backpropagate(current_node, 1.0)
+                    elif decision == HumanDecision.APPROVE:
+                        logger.info("Human approved execution. Proceeding.")
+                        # No score backprop here, let execution determine the score
+                
+                # Proceed to execute tools for this pending node
+                logger.info(f"Workflow: executing approved tools for node {current_node.id}...")
+                self._engine.execute_node(current_node, goal_contract)
+                best_overall_node = self._engine.select_next_node(root_node)
+                continue
 
-            # 4. AI Execution (MCTS Step: Expansion & Simulation)
+            # 4. AI Execution (MCTS Step: Expansion)
+            logger.info(f"Workflow: expanding node {current_node.id}...")
             child_nodes = self._engine.step(current_node, goal_contract)
 
             if not child_nodes:
@@ -183,10 +188,6 @@ class HermesMctsWorkflow:
                 best_overall_node = current_node
                 break
 
-            # In true MCTS, we don't just pick one child. We expand the tree and 
-            # let the next loop iteration select the best leaf via UCB1.
-            # For simplicity in this conversational flow, we define the "best_overall_node"
-            # as the one the user would see if they stopped now.
             best_overall_node = self._engine.select_next_node(root_node)
 
         # --- POST-LOOP: Final Validation ---

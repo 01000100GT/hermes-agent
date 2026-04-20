@@ -1,6 +1,6 @@
 """
 Real MCTS engine implementation that calls the actual LLM API.
-Uses Hermes Agent's auxiliary_client and tool registry.
+Follows the Dependency Inversion Principle and SRP.
 """
 
 import math
@@ -14,88 +14,64 @@ from .contracts import IMctsEngine, MctsNode, NodeStatus, GoalContract, IEvaluat
 logger = logging.getLogger(__name__)
 
 class RealMctsEngine(IMctsEngine):
-    def __init__(self, agent, evaluator=None, llm_provider: ILlmProvider = None, tool_executor: IToolExecutor = None, temperature: float = 0.7, branching_factor: int = 2, exploration_constant: float = 1.414):
-        self.agent = agent
-        self.evaluator = evaluator or (agent.evaluator if hasattr(agent, 'evaluator') else None)
+    def __init__(
+        self,
+        system_prompt: str,
+        tools: List[Dict[str, Any]],
+        evaluator: IEvaluator,
+        llm_provider: ILlmProvider,
+        tool_executor: IToolExecutor,
+        temperature: float = 0.7,
+        branching_factor: int = 2,
+        exploration_constant: float = 1.414
+    ):
+        self.system_prompt = system_prompt
+        self.tools = tools
+        self.evaluator = evaluator
         self.llm_provider = llm_provider
         self.tool_executor = tool_executor
         self.temperature = temperature
         self.branching_factor = branching_factor
-        self.tools = agent.tools
         self.exploration_constant = exploration_constant
         self.total_simulations = 0
+
+    def _generate_branch(self, i: int, history: List[Dict[str, Any]]) -> Optional[Any]:
+        try:
+            logger.info(f"MCTS Engine: requesting LLM (branch {i+1}/{self.branching_factor})...")
+            temperature = self.temperature if i == 0 else min(1.0, self.temperature + 0.2)
+            msg = self.llm_provider.generate(
+                messages=history,
+                tools=self.tools,
+                temperature=temperature
+            )
+            return msg
+        except Exception as e:
+            logger.error(f"Branch {i+1} generation failed: {e}", exc_info=True)
+            return None
 
     def step(self, current_node: MctsNode, goal: GoalContract) -> List[MctsNode]:
         """
         Expands the current node by calling the LLM multiple times (branching).
-        Then uses the injected Evaluator to score each branch.
+        Generates PENDING actions but does NOT execute tools.
         """
-        logger.info(
-            f"MCTS Engine expanding node {current_node.id} with b={self.branching_factor}..."
-        )
+        logger.info(f"MCTS Engine expanding node {current_node.id} with b={self.branching_factor}...")
 
-        # Build the full system prompt from the agent's core logic
-        system_prompt = self.agent._build_system_prompt()
-        
-        # Apply prompt caching for Anthropic if supported
-        from agent.prompt_caching import apply_anthropic_cache_control
-        base_messages = [{"role": "system", "content": system_prompt}]
-        full_history = base_messages + current_node.history
-        
-        # We cache the system prompt and the stable part of history
-        cached_history = apply_anthropic_cache_control(full_history)
+        base_messages = [{"role": "system", "content": self.system_prompt}]
+        history = base_messages + current_node.history
 
         candidates = []
-        # Phase 1: Expansion (Generate N candidate actions)
-        for i in range(self.branching_factor):
-            try:
-                print(
-                    f"\n[AI 思考中] 正在向 LLM 发送请求 (生成分支 {i+1}/{self.branching_factor})..."
-                )
-                if self.llm_provider:
-                    msg = self.llm_provider.generate(
-                        messages=cached_history,
-                        tools=self.tools,
-                        temperature=(self.temperature if i == 0 else min(1.0, self.temperature + 0.2))
-                    )
-                else:
-                    from agent.auxiliary_client import call_llm
-                    response = call_llm(
-                        task="mcts_step",
-                        messages=cached_history,
-                        tools=self.tools,
-                        temperature=(
-                            self.temperature if i == 0 else min(1.0, self.temperature + 0.2)
-                        ),
-                    )
-                    msg = response.choices[0].message
-                
-                branch_text = msg.content or ""
-                print(f"\n[AI 回复] 分支 {i+1} 返回结果:")
-                if branch_text.strip():
-                    print(f"  - 文本内容: {branch_text}")
-                
-                if hasattr(msg, "tool_calls") and msg.tool_calls:
-                    for tc in msg.tool_calls:
-                        try:
-                            args_short = json.dumps(json.loads(tc.function.arguments))
-                            if len(args_short) > 100:
-                                args_short = args_short[:97] + "..."
-                            print(f"  - 工具调用: {tc.function.name}({args_short})")
-                        except:
-                            print(f"  - 工具调用: {tc.function.name}({tc.function.arguments})")
-                    
-                candidates.append(msg)
-            except Exception as e:
-                import traceback
-                print(f"\n[错误] 分支 {i+1} 生成失败: {e}")
-                traceback.print_exc()
-                logger.error(f"Branch generation failed: {e}")
+        # Phase 1: Expansion using ThreadPool for concurrency (addresses Full-Stack expert comment)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.branching_factor) as executor:
+            futures = [executor.submit(self._generate_branch, i, history) for i in range(self.branching_factor)]
+            for future in concurrent.futures.as_completed(futures):
+                msg = future.result()
+                if msg:
+                    candidates.append(msg)
 
         if not candidates:
             return []
 
-        # Phase 2: Execution & Node Creation
+        # Phase 2: Create Child Nodes (Proposed Actions only)
         child_nodes = []
         for idx, message in enumerate(candidates):
             content = message.content or ""
@@ -111,7 +87,7 @@ class RealMctsEngine(IMctsEngine):
                     proposed_tool_calls.append(
                         {"name": tc.function.name, "args": args, "id": tc.id}
                     )
-
+                    
             new_history = list(current_node.history)
             assistant_msg = {"role": "assistant"}
             if content:
@@ -128,54 +104,17 @@ class RealMctsEngine(IMctsEngine):
                     }
                     for tc in message.tool_calls
                 ]
-            # 消息合规性校验：确保 assistant 消息不为空 (协议要求必须有 content 或 tool_calls)
+            
             if not assistant_msg.get("content") and not assistant_msg.get("tool_calls"):
                 assistant_msg["content"] = "(AI failed to generate a response, please try another path)"
             
             new_history.append(assistant_msg)
 
-            # Execute tools to see the real outcome for this branch
-            if proposed_tool_calls:
-                for call in proposed_tool_calls:
-                    tool_name = call.get("name", "")
-                    tool_args = call.get("args", {})
-                    print(
-                        f"[分支 {idx+1} 执行工具] {tool_name}({json.dumps(tool_args)})"
-                    )
-                    try:
-                        if self.tool_executor:
-                            final_result = self.tool_executor.execute(tool_name, tool_args)
-                        else:
-                            from model_tools import handle_function_call
-                            raw_result = handle_function_call(
-                                function_name=tool_name,
-                                function_args=tool_args,
-                                task_id=f"mcts_branch_{idx}",
-                                session_id="mcts_session",
-                            )
-                            final_result = raw_result
-                    except Exception as tool_e:
-                        final_result = json.dumps(
-                            {"status": "error", "message": str(tool_e)}
-                        )
-
-                    new_history.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": call["id"],
-                            "name": tool_name,
-                            "content": final_result,
-                        }
-                    )
-
-            # 状态判定优化：
-            # 1. 如果有拟执行的工具，状态必为 PENDING
-            # 2. 如果没有工具调用且内容为空，说明 AI “卡壳”了，设为 PENDING (后续会被低分拦截)
-            # 3. 只有当没有工具调用且内容不为空时，才初步认为可能 COMPLETED (后续由 Evaluator 确证)
+            # Determine status
             if proposed_tool_calls:
                 status = NodeStatus.PENDING
             elif not content.strip():
-                status = NodeStatus.PENDING  # 空回复不代表完成
+                status = NodeStatus.PENDING  
             else:
                 status = NodeStatus.COMPLETED
 
@@ -191,19 +130,55 @@ class RealMctsEngine(IMctsEngine):
             current_node.children.append(node)
             child_nodes.append(node)
 
-        # For each child node, we use the evaluator to score its outcome against the GoalContract.
-        print(f"\n[验证器] 正在对 {len(child_nodes)} 个探索分支进行过程打分...")
+        # Phase 3: Initial Evaluation of Proposed Actions
+        logger.info(f"Evaluating {len(child_nodes)} proposed branches...")
         for node in child_nodes:
             score, reason = self.evaluator.evaluate_step(node, goal)
             node.score = score
             node.critic_reason = reason
-            print(f"  [Validator] Node {node.id} score: {score:.2f}")
-            print(f"  [Critic] Reason: {reason}")
+            logger.debug(f"Node {node.id} initial score: {score:.2f}, reason: {reason}")
             
-            # MCTS: Backpropagate the initial evaluation score
             self.backpropagate(node, score)
 
         return child_nodes
+
+    def execute_node(self, node: MctsNode, goal: GoalContract) -> None:
+        """
+        Executes the tools in a PENDING node, commits the results,
+        evaluates the execution outcome, and updates the score.
+        """
+        if node.status != NodeStatus.PENDING or not node.proposed_tool_calls:
+            logger.warning(f"execute_node called on node {node.id} with status {node.status}, no tools to run.")
+            return
+
+        for call in node.proposed_tool_calls:
+            tool_name = call.get("name", "")
+            tool_args = call.get("args", {})
+            logger.info(f"Executing tool {tool_name} for node {node.id}...")
+            
+            try:
+                final_result = self.tool_executor.execute(tool_name, tool_args)
+            except Exception as e:
+                # Add proper execution error status for Evaluator to penalize
+                logger.error(f"Tool {tool_name} failed: {e}")
+                final_result = json.dumps({"status": "ExecutionError", "message": str(e)})
+
+            node.history.append({
+                "role": "tool",
+                "tool_call_id": call["id"],
+                "name": tool_name,
+                "content": final_result,
+            })
+            
+        # Update node status and re-evaluate with actual tool results
+        node.status = NodeStatus.EXECUTED
+        score, reason = self.evaluator.evaluate_step(node, goal)
+        node.score = score
+        node.critic_reason = reason
+        logger.info(f"Node {node.id} post-execution score: {score:.2f}, reason: {reason}")
+        
+        self.backpropagate(node, score)
+
 
     def backpropagate(self, node: MctsNode, score: float) -> None:
         """Updates the path from leaf to root with the evaluation score."""
@@ -218,7 +193,6 @@ class RealMctsEngine(IMctsEngine):
         """Selects the most promising leaf node using UCB1."""
         curr = root
         while curr.children:
-            # Pick child with highest UCB1 score
             best_score = -1.0
             best_child = None
             
@@ -227,7 +201,6 @@ class RealMctsEngine(IMctsEngine):
                     best_child = child
                     break
                 
-                # UCB1 Formula: x_bar + C * sqrt(ln(N) / n)
                 exploitation = child.avg_value
                 exploration = self.exploration_constant * math.sqrt(
                     math.log(self.total_simulations) / child.visit_count
@@ -244,39 +217,24 @@ class RealMctsEngine(IMctsEngine):
         return curr
 
     def prune_and_redirect(self, node: MctsNode, feedback: str) -> None:
-        """
-        Injects the human's feedback into the node's history to steer the LLM
-        away from the pruned path in the next generation attempt.
-        """
-        node.history.append(
-            {
-                "role": "user",
-                "content": f"SYSTEM/HUMAN INTERVENTION: 您之前的意图操作已被阻止或剪枝。Feedback/Hint:{feedback}。请重新评估并尝试不同的方法。",
-            }
-        )
+        node.history.append({
+            "role": "user",
+            "content": f"SYSTEM/HUMAN INTERVENTION: 您之前的意图操作已被阻止或剪枝。Feedback/Hint:{feedback}。请重新评估并尝试不同的方法。",
+        })
         node.status = NodeStatus.PRUNED
 
     def apply_override(self, node: MctsNode, feedback: str) -> None:
-        """
-        Injects the human's exact answer into the node's history so the LLM
-        can skip the stuck step and proceed directly.
-        """
-        node.history.append(
-            {
-                "role": "user",
-                "content": f"SYSTEM/HUMAN INTERVENTION: 人类直接为您提供了当前步骤的确切结果或答案：\n{feedback}\n\n请直接基于此结果继续执行下一步操作。",
-            }
-        )
-        node.status = NodeStatus.PENDING
+        node.history.append({
+            "role": "user",
+            "content": f"SYSTEM/HUMAN INTERVENTION: 人类直接为您提供了当前步骤的确切结果或答案：\n{feedback}\n\n请直接基于此结果继续执行下一步操作。",
+        })
+        # Wait, if override is provided, we simulate an execution success. 
+        # So it's EXECUTED, not PENDING.
+        node.status = NodeStatus.EXECUTED
 
     def diagnose_trajectory(self, node: MctsNode) -> str:
-        """
-        Uses the LLM to diagnose the current stuck trajectory and provide actionable advice for the human.
-        """
-        print("\n[系统诊断] 正在分析 AI 陷入困境的原因并生成建议...")
+        logger.info("Diagnosing stuck trajectory...")
         try:
-            import json
-            # Extract recent history to avoid token bloat
             recent_history = node.history[-6:]
             history_text = json.dumps(recent_history, ensure_ascii=False, indent=2)
             
@@ -289,25 +247,17 @@ class RealMctsEngine(IMctsEngine):
                 f"【最近执行历史】\n{history_text}"
             )
             
-            if self.llm_provider:
-                response_msg = self.llm_provider.generate(
-                    messages=[{"role": "user", "content": prompt}],
-                    tools=[],
-                    temperature=0.3
-                )
-            else:
-                from agent.auxiliary_client import call_llm
-                response = call_llm(
-                    task="diagnose_trajectory",
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.3
-                )
-                response_msg = response.choices[0].message
+            response_msg = self.llm_provider.generate(
+                messages=[{"role": "user", "content": prompt}],
+                tools=[],
+                temperature=0.3
+            )
             
             import re
             raw_content = response_msg.content or ""
             raw_content = re.sub(r'<think>[\s\S]*?</think>', '', raw_content).strip()
-            
             return f"【诊断报告】\n{raw_content}"
+            
         except Exception as e:
+            logger.error(f"Diagnostics failed: {e}")
             return f"AI 达到了最大探索步数限制，且诊断服务调用失败: {e}"

@@ -122,6 +122,13 @@ class IMctsEngine(Protocol):
         """
         ...
 
+    def execute_node(self, node: MctsNode, goal: GoalContract) -> None:
+        """
+        Execute the proposed tool calls of a PENDING node.
+        This must be called after harness checks. Updates node status and backpropagates the evaluation.
+        """
+        ...
+
     def prune_and_redirect(self, node: MctsNode, feedback: str) -> None:
         """Handle human intervention to prune a branch and steer the search."""
         ...
