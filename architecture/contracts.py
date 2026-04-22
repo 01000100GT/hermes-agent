@@ -24,6 +24,21 @@ class HumanDecision(Enum):
     ABORT = "ABORT"
 
 
+class TaskType(Enum):
+    """Determines which engine strategy and isolation mode to use."""
+    STOCK = "stock"
+    CODE = "code"
+    DOC = "doc"
+    RESEARCH = "research"
+    AUTO = "auto"
+
+
+class Isolation(Enum):
+    """Branch filesystem isolation strategy."""
+    NONE = "none"
+    WORKTREE = "worktree"
+
+
 @dataclass
 class GoalContract:
     """
@@ -52,6 +67,13 @@ class MctsNode:
     children: List["MctsNode"] = field(default_factory=list)
     parent: Optional["MctsNode"] = None
 
+    # --- Phase 1.1 fields (worktree/cost filled by later phases) ---
+    branch_id: str = ""
+    worktree_path: Optional[str] = None
+    cost_usd: float = 0.0
+    cumulative_cost_usd: float = 0.0
+    merge_patch: Optional[str] = None
+
     @property
     def avg_value(self) -> float:
         return self.value / self.visit_count if self.visit_count > 0 else 0.0
@@ -59,14 +81,19 @@ class MctsNode:
 
 class IRequirementElicitor(Protocol):
     """
-    Contract for the requirement elicitation phase.
-    Single Responsibility: Clarify vague requests into a concrete GoalContract with the user.
+    Contract for the goal contract review phase.
+    Produces a GoalContract with mechanically-verifiable acceptance_criteria.
     """
+    def review_goal(self, goal: str) -> GoalContract:
+        """
+        Analyze goal string, draft boundaries + verifiable criteria,
+        present to user via HITL for Approve/Edit/Reject.
+        Returns finalized GoalContract (is_approved=False if rejected).
+        """
+        ...
+
     def clarify_goal(self, initial_request: str) -> GoalContract:
-        """
-        Engage with the user (or LLM + Human in loop) to lock down the boundaries and criteria.
-        Returns the finalized and approved GoalContract.
-        """
+        """Legacy entry point for backward compatibility. Delegates to review_goal."""
         ...
 
 class IHarnessMonitor(Protocol):

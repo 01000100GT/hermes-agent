@@ -4,7 +4,7 @@ Implements Single Responsibility Principle by decoupling evaluation from tree ge
 """
 
 from typing import Tuple
-from .contracts import IEvaluator, MctsNode, GoalContract
+from .contracts import IEvaluator, MctsNode, GoalContract, NodeStatus
 
 class SubagentEvaluatorAdapter(IEvaluator):
     def __init__(self, parent_agent=None):
@@ -117,4 +117,4 @@ class SubagentEvaluatorAdapter(IEvaluator):
         return 0.0, ""
 
     def check_acceptance(self, node: MctsNode, goal: GoalContract) -> bool:
-        return node.status == MctsNode.COMPLETED
+        return node.status == NodeStatus.COMPLETED

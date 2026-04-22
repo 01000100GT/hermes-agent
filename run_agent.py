@@ -6966,6 +6966,16 @@ class AIAgent:
                 max_iterations=function_args.get("max_iterations"),
                 parent_agent=self,
             )
+        elif function_name == "mcts_delegate":
+            from tools.mcts_delegate_tool import mcts_delegate as _mcts_delegate
+            return _mcts_delegate(
+                goal=function_args.get("goal", ""),
+                task_type=function_args.get("task_type", "auto"),
+                max_iterations=function_args.get("max_iterations", 10),
+                branching_factor=function_args.get("branching_factor", 2),
+                budget_usd=function_args.get("budget_usd", 1.0),
+                parent_agent=self,
+            )
         else:
             return handle_function_call(
                 function_name, function_args, effective_task_id,
@@ -7404,6 +7414,31 @@ class AIAgent:
                         spinner.stop(cute_msg)
                     elif self._should_emit_quiet_tool_messages():
                         self._vprint(f"  {cute_msg}")
+            elif function_name == "mcts_delegate":
+                from tools.mcts_delegate_tool import mcts_delegate as _mcts_delegate
+                goal_preview = (function_args.get("goal") or "")[:30]
+                spinner = None
+                if self._should_emit_quiet_tool_messages() and self._should_start_quiet_spinner():
+                    face = random.choice(KawaiiSpinner.KAWAII_WAITING)
+                    spinner = KawaiiSpinner(f"🌳 {goal_preview}", spinner_type='dots', print_fn=self._print_fn)
+                    spinner.start()
+                _mcts_result = None
+                try:
+                    function_result = _mcts_delegate(
+                        goal=function_args.get("goal", ""),
+                        task_type=function_args.get("task_type", "auto"),
+                        max_iterations=function_args.get("max_iterations", 10),
+                        branching_factor=function_args.get("branching_factor", 2),
+                        budget_usd=function_args.get("budget_usd", 1.0),
+                        parent_agent=self,
+                    )
+                    _mcts_result = function_result
+                finally:
+                    tool_duration = time.time() - tool_start_time
+                    if spinner:
+                        spinner.stop(f"🌳 MCTS done ({tool_duration:.1f}s)")
+                    elif self._should_emit_quiet_tool_messages():
+                        self._vprint(f"  🌳 MCTS delegate completed in {tool_duration:.1f}s")
             elif self._context_engine_tool_names and function_name in self._context_engine_tool_names:
                 # Context engine tools (lcm_grep, lcm_describe, lcm_expand, etc.)
                 spinner = None

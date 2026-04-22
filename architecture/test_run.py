@@ -102,13 +102,17 @@ def run_simulation():
     elicitor = MacCliElicitorAdapter()
     evaluator = SubagentEvaluatorAdapter(parent_agent=agent)
     llm_provider = HermesLlmProvider()
-    tool_executor = HermesToolExecutor()
+    tool_executor = HermesToolExecutor(
+        task_id="mcts_test_branch",
+        session_id="mcts_test_session",
+    )
     engine = RealMctsEngine(
-        agent=agent, 
-        evaluator=evaluator, 
-        llm_provider=llm_provider, 
-        tool_executor=tool_executor, 
-        branching_factor=2
+        system_prompt=agent._build_system_prompt(),
+        tools=agent.tools or [],
+        evaluator=evaluator,
+        llm_provider=llm_provider,
+        tool_executor=tool_executor,
+        branching_factor=2,
     )
     harness = DefaultHarnessMonitor()
     hitl = MacCliHitlAdapter()

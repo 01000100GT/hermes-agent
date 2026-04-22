@@ -5,8 +5,9 @@ Uses Rich for beautiful prompts and formatting, and native Mac OS notifications.
 
 import sys
 import os
-from typing import List, Optional
-from .contracts import IHumanIntervention, MctsNode, HumanDecision
+import subprocess
+from typing import List, Optional, Tuple
+from .contracts import IHumanIntervention, MctsNode, HumanDecision, GoalContract
 from .cli_utils import read_multiline_input
 
 try:
@@ -28,8 +29,18 @@ class MacCliHitlAdapter(IHumanIntervention):
         sys.stdout.write("\a")
         sys.stdout.flush()
 
-        # Mac Native Notification
-        os.system(f"osascript -e 'display notification \"{reason}\" with title \"Hermes Agent HITL\" subtitle \"需要您的干预\" sound name \"Glass\"'")
+        # Mac Native Notification (safe from shell injection via list args)
+        try:
+            subprocess.run(
+                [
+                    "osascript", "-e",
+                    f'display notification "{reason}" with title "Hermes Agent HITL" subtitle "需要您的干预" sound name "Glass"'
+                ],
+                timeout=5,
+                check=False,
+            )
+        except Exception:
+            pass  # Notification is best-effort, never block the decision flow
 
         if HAS_RICH:
             console.print("\n[bold red]⚠️  系统拦截执行[/bold red]")
@@ -109,3 +120,96 @@ class MacCliHitlAdapter(IHumanIntervention):
 
     def get_human_feedback(self) -> Optional[str]:
         return self._last_feedback
+
+    # ------------------------------------------------------------------
+    # D9: Contract preview with batch-approval checkbox (§7.2)
+    # ------------------------------------------------------------------
+
+    def preview_contract_and_confirm(
+        self, contract: GoalContract
+    ) -> Tuple[GoalContract, bool]:
+        """
+        Present GoalContract for user review.
+        Returns (final_contract, approve_all_dangerous).
+        approve_all_dangerous is the D6 batch-approval consent.
+        """
+        approve_all = False
+
+        if HAS_RICH:
+            from rich.panel import Panel
+            from rich.text import Text
+
+            boundary_text = "\n".join(f"  - {b}" for b in contract.clarified_boundaries)
+            criteria_text = "\n".join(f"  - {c}" for c in contract.acceptance_criteria)
+
+            panel_content = (
+                f"[bold]Goal:[/bold] {contract.original_request}\n\n"
+                f"[bold]Boundaries:[/bold]\n{boundary_text}\n\n"
+                f"[bold]Acceptance Criteria (verifiable):[/bold]\n{criteria_text}\n\n"
+                f"[dim]Batch-approve dangerous commands for this task?[/dim]"
+            )
+            console.print(Panel(panel_content, title="[bold]Goal Contract Review[/bold]", border_style="green"))
+
+            # D6 batch approval checkbox
+            batch_choice = Prompt.ask(
+                "[bold]Approve all dangerous commands for this MCTS task?[/bold]",
+                choices=["y", "n"],
+                default="n",
+            )
+            approve_all = batch_choice == "y"
+
+            main_choice = Prompt.ask(
+                "\n[bold]Contract decision[/bold]",
+                choices=["approve", "edit", "reject"],
+                default="approve",
+            )
+
+            if main_choice == "approve":
+                contract.is_approved = True
+            elif main_choice == "edit":
+                new_b = read_multiline_input("[cyan]Edit boundaries (one per line):[/cyan]")
+                new_c = read_multiline_input("[cyan]Edit criteria (one per line):[/cyan]")
+                if new_b.strip():
+                    contract.clarified_boundaries = [
+                        line.strip() for line in new_b.strip().split("\n") if line.strip()
+                    ]
+                if new_c.strip():
+                    contract.acceptance_criteria = [
+                        line.strip() for line in new_c.strip().split("\n") if line.strip()
+                    ]
+                contract.is_approved = True
+            else:
+                contract.is_approved = False
+                console.print("[red]Goal Contract rejected. MCTS task aborted.[/red]")
+
+        else:
+            print("\n" + "=" * 60)
+            print("GOAL CONTRACT REVIEW")
+            print("=" * 60)
+            print(f"Goal: {contract.original_request}")
+            print("\nBoundaries:")
+            for b in contract.clarified_boundaries:
+                print(f"  - {b}")
+            print("\nAcceptance Criteria (verifiable):")
+            for c in contract.acceptance_criteria:
+                print(f"  - {c}")
+
+            batch = input("\nApprove all dangerous commands for this task? (y/n) [n]: ").strip().lower()
+            approve_all = batch == "y"
+
+            choice = input("\nContract decision (approve/edit/reject) [approve]: ").strip().lower() or "approve"
+            if choice == "approve":
+                contract.is_approved = True
+            elif choice == "edit":
+                new_b = input("Edit boundaries (one per line, blank to keep): ")
+                new_c = input("Edit criteria (one per line, blank to keep): ")
+                if new_b.strip():
+                    contract.clarified_boundaries = [l.strip() for l in new_b.strip().split("\n") if l.strip()]
+                if new_c.strip():
+                    contract.acceptance_criteria = [l.strip() for l in new_c.strip().split("\n") if l.strip()]
+                contract.is_approved = True
+            else:
+                contract.is_approved = False
+                print("Goal Contract rejected. MCTS task aborted.")
+
+        return contract, approve_all
