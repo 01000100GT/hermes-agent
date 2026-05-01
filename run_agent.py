@@ -8246,8 +8246,18 @@ class AIAgent:
 
 
     def _handle_max_iterations(self, messages: list, api_call_count: int) -> str:
-        """Request a summary when max iterations are reached. Returns the final response text."""
-        print(f"⚠️  Reached maximum iterations ({self.max_iterations}). Requesting summary...")
+        """Request a summary when max iterations are reached. Returns the final response text.
+
+        Imposes a hard 60-second timeout on every API call in this method so a
+        slow or stalled provider cannot block the CLI indefinitely after a task
+        finishes.  On timeout the method falls through to the generic fallback
+        message rather than hanging.
+        """
+        _SUMMARY_TIMEOUT = 60  # seconds — hard cap for all summary API calls
+        self._emit_status(
+            f"⚠️ 已达最大迭代次数 ({self.max_iterations})，正在生成任务总结，请稍候…"
+        )
+        print(f"⚠️  Reached maximum iterations ({self.max_iterations}). Generating summary (timeout: {_SUMMARY_TIMEOUT}s)...")
 
         summary_request = (
             "You've reached the maximum number of tool-calling iterations allowed. "
@@ -8343,10 +8353,14 @@ class AIAgent:
                                    max_tokens=self.max_tokens, reasoning_config=self.reasoning_config,
                                    is_oauth=self._is_anthropic_oauth,
                                    preserve_dots=self._anthropic_preserve_dots())
+                    # Apply hard timeout so a stalled Anthropic connection cannot
+                    # freeze the CLI after the iteration limit is reached.
+                    _ant_kw.setdefault("timeout", _SUMMARY_TIMEOUT)
                     summary_response = self._anthropic_messages_create(_ant_kw)
                     _sum_nr = _tsum.normalize_response(summary_response, strip_tool_prefix=self._is_anthropic_oauth)
                     final_response = (_sum_nr.content or "").strip()
                 else:
+                    summary_kwargs.setdefault("timeout", _SUMMARY_TIMEOUT)
                     summary_response = self._ensure_primary_openai_client(reason="iteration_limit_summary").chat.completions.create(**summary_kwargs)
 
                     if summary_response.choices and summary_response.choices[0].message.content:
@@ -8376,6 +8390,7 @@ class AIAgent:
                                     is_oauth=self._is_anthropic_oauth,
                                     max_tokens=self.max_tokens, reasoning_config=self.reasoning_config,
                                     preserve_dots=self._anthropic_preserve_dots())
+                    _ant_kw2.setdefault("timeout", _SUMMARY_TIMEOUT)
                     retry_response = self._anthropic_messages_create(_ant_kw2)
                     _retry_nr = _tretry.normalize_response(retry_response, strip_tool_prefix=self._is_anthropic_oauth)
                     final_response = (_retry_nr.content or "").strip()
@@ -8383,6 +8398,7 @@ class AIAgent:
                     summary_kwargs = {
                         "model": self.model,
                         "messages": api_messages,
+                        "timeout": _SUMMARY_TIMEOUT,
                     }
                     if _summary_temperature is not None:
                         summary_kwargs["temperature"] = _summary_temperature
@@ -8408,8 +8424,16 @@ class AIAgent:
                 else:
                     final_response = "I reached the iteration limit and couldn't generate a summary."
 
+        except TimeoutError as e:
+            # Hard timeout hit — report clearly so the user knows what happened
+            # instead of seeing a frozen CLI.
+            logging.warning("Summary generation timed out after %ds: %s", _SUMMARY_TIMEOUT, e)
+            final_response = (
+                f"I reached the maximum number of iterations ({self.max_iterations}). "
+                "The summary generation timed out — please review the tool activity log above for details."
+            )
         except Exception as e:
-            logging.warning(f"Failed to get summary response: {e}")
+            logging.warning("Failed to get summary response: %s", e)
             final_response = f"I reached the maximum iterations ({self.max_iterations}) but couldn't summarize. Error: {str(e)}"
 
         return final_response

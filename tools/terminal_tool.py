@@ -1126,17 +1126,45 @@ def is_persistent_env(task_id: str) -> bool:
 
 
 def cleanup_all_environments():
-    """Clean up ALL active environments. Use with caution."""
+    """Clean up ALL active environments concurrently.
+
+    Uses a thread pool so that slow backends (Docker, Modal, Daytona)
+    are torn down in parallel rather than serially.  The total wall-clock
+    wait is bounded by the slowest single environment rather than the sum
+    of all environment teardown times.  A hard 12-second cap is enforced
+    so that process exit is never blocked indefinitely by a hung sandbox.
+    """
+    import concurrent.futures as _cf
+
     task_ids = list(_active_environments.keys())
-    cleaned = 0
-    
-    for task_id in task_ids:
+    if not task_ids:
+        return 0
+
+    _TOTAL_TIMEOUT = 12  # seconds — hard cap for the whole cleanup batch
+
+    def _cleanup_one(tid):
         try:
-            cleanup_vm(task_id)
-            cleaned += 1
+            cleanup_vm(tid)
         except Exception as e:
-            logger.error("Error cleaning %s: %s", task_id, e, exc_info=True)
-    
+            logger.error("Error cleaning environment %s: %s", tid, e, exc_info=True)
+
+    cleaned = 0
+    with _cf.ThreadPoolExecutor(
+        max_workers=min(len(task_ids), 8),
+        thread_name_prefix="env-cleanup",
+    ) as pool:
+        futures = {pool.submit(_cleanup_one, tid): tid for tid in task_ids}
+        done, pending = _cf.wait(
+            futures, timeout=_TOTAL_TIMEOUT, return_when=_cf.ALL_COMPLETED
+        )
+        cleaned = len(done)
+        for fut in pending:
+            logger.debug(
+                "cleanup_all_environments: env %s cleanup timed out, abandoning",
+                futures[fut],
+            )
+            fut.cancel()
+
     # Also clean any orphaned directories
     scratch_dir = _get_scratch_dir()
     import glob
@@ -1146,7 +1174,7 @@ def cleanup_all_environments():
             logger.info("Removed orphaned: %s", path)
         except OSError as e:
             logger.debug("Failed to remove orphaned path %s: %s", path, e)
-    
+
     if cleaned > 0:
         logger.info("Cleaned %d environments", cleaned)
     return cleaned
@@ -1195,11 +1223,20 @@ def cleanup_vm(task_id: str):
 
 
 def _atexit_cleanup():
-    """Stop cleanup thread and shut down all remaining sandboxes on exit."""
+    """Stop cleanup thread and shut down all remaining sandboxes on exit.
+
+    Cleanup is parallelized and capped at 12 seconds total so that process
+    exit is never blocked indefinitely by slow container teardown.  Any
+    environment that hasn't closed by then is abandoned — it will be reaped
+    by the inactivity cleanup on the next process start.
+    """
     _stop_cleanup_thread()
     if _active_environments:
         count = len(_active_environments)
-        logger.info("Shutting down %d remaining sandbox(es)...", count)
+        logger.info(
+            "Shutting down %d remaining sandbox(es) in parallel (max 12s)...",
+            count,
+        )
         cleanup_all_environments()
 
 atexit.register(_atexit_cleanup)

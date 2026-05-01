@@ -2310,15 +2310,46 @@ def cleanup_browser(task_id: Optional[str] = None) -> None:
 
 
 def cleanup_all_browsers() -> None:
+    """Clean up all active browser sessions in parallel.
+
+    Uses a thread pool to close sessions concurrently rather than
+    serially.  With a per-session close timeout of 8 seconds and a
+    total wall-clock cap of 12 seconds, the worst-case exit delay
+    is bounded regardless of how many sessions are open (vs. the
+    previous serial design where N sessions × 10s = N×10s freeze).
     """
-    Clean up all active browser sessions.
-    
-    Useful for cleanup on shutdown.
-    """
+    import concurrent.futures as _cf
+
     with _cleanup_lock:
         task_ids = list(_active_sessions.keys())
-    for task_id in task_ids:
-        cleanup_browser(task_id)
+
+    if task_ids:
+        # Each cleanup_browser() call can block up to ~10s waiting for the
+        # agent-browser close subprocess.  Run all in parallel so the
+        # total wait is bounded by the slowest single session, not the sum.
+        _PER_SESSION_TIMEOUT = 8   # seconds — per individual session close
+        _TOTAL_TIMEOUT = 12        # seconds — hard cap for the whole batch
+
+        def _close_one(tid):
+            try:
+                cleanup_browser(tid)
+            except Exception as exc:
+                logger.debug("cleanup_all_browsers: error closing session %s: %s", tid, exc)
+
+        with _cf.ThreadPoolExecutor(
+            max_workers=min(len(task_ids), 8),
+            thread_name_prefix="browser-cleanup",
+        ) as pool:
+            futures = {pool.submit(_close_one, tid): tid for tid in task_ids}
+            done, pending = _cf.wait(
+                futures, timeout=_TOTAL_TIMEOUT, return_when=_cf.ALL_COMPLETED
+            )
+            for fut in pending:
+                logger.debug(
+                    "cleanup_all_browsers: session %s close timed out, abandoning",
+                    futures[fut],
+                )
+                fut.cancel()
 
     # Reset cached lookups so they are re-evaluated on next use.
     global _cached_agent_browser, _agent_browser_resolved

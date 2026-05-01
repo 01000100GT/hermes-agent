@@ -677,32 +677,42 @@ _cleanup_done = False
 _active_agent_ref = None
 
 def _run_cleanup():
-    """Run resource cleanup exactly once."""
+    """Run resource cleanup exactly once.
+
+    Each step is timed and logged so that slow cleanup phases are visible
+    in the log file for future debugging.  None of the timing output is
+    shown to the user in normal operation.
+    """
     global _cleanup_done
     if _cleanup_done:
         return
     _cleanup_done = True
-    try:
-        _cleanup_all_terminals()
-    except Exception:
-        pass
-    try:
-        _cleanup_all_browsers()
-    except Exception:
-        pass
-    try:
-        from tools.mcp_tool import shutdown_mcp_servers
-        shutdown_mcp_servers()
-    except Exception:
-        pass
+
+    import time as _time
+
+    def _timed(label, fn):
+        t0 = _time.monotonic()
+        try:
+            fn()
+        except Exception:
+            pass
+        elapsed = _time.monotonic() - t0
+        if elapsed > 2.0:
+            logger.debug("_run_cleanup: %s took %.1fs", label, elapsed)
+
+    _timed("terminals", _cleanup_all_terminals)
+    _timed("browsers", _cleanup_all_browsers)
+    _timed(
+        "mcp_servers",
+        lambda: __import__("tools.mcp_tool", fromlist=["shutdown_mcp_servers"]).shutdown_mcp_servers(),
+    )
     # Close cached auxiliary LLM clients (sync + async) so that
     # AsyncHttpxClientWrapper.__del__ doesn't fire on a closed event loop
     # and trigger prompt_toolkit's "Press ENTER to continue..." handler.
-    try:
-        from agent.auxiliary_client import shutdown_cached_clients
-        shutdown_cached_clients()
-    except Exception:
-        pass
+    _timed(
+        "aux_clients",
+        lambda: __import__("agent.auxiliary_client", fromlist=["shutdown_cached_clients"]).shutdown_cached_clients(),
+    )
     # Shut down memory provider (on_session_end + shutdown_all) at actual
     # session boundary — NOT per-turn inside run_conversation().
     try:
@@ -717,6 +727,8 @@ def _run_cleanup():
             )
     except Exception:
         pass
+
+
 
 
 # =============================================================================
